@@ -279,3 +279,25 @@ def data_check_report(data: CodingData) -> str:
         for comp in COMPONENTS:
             lines.append(f"  {comp:36} {flag_counts(data, coder, comp)}")
     return "\n".join(lines)
+
+
+# choose what cases what to run
+
+def select_comparisons(comparisons: list[Comparison], only: list[str] | None) -> list[Comparison]:
+    """Keep the comparisons named in `only` (in that order); all of them if `only` is None."""
+    if not only:
+        return comparisons
+    by_name = {c.name: c for c in comparisons}
+    unknown = [n for n in only if n not in by_name]
+    if unknown:
+        raise ValueError(f"Unknown comparison(s) {unknown}. Available: {list(by_name)}")
+    return [by_name[n] for n in only]
+
+
+def coders_needed(
+    coders: list[CoderSource], comparisons: list[Comparison], units_from: str
+) -> list[CoderSource]:
+    """Only the coders used by the chosen comparisons (plus `units_from`), so a
+    human-only run never loads or prints the LLM's sheet."""
+    needed = {units_from} | {name for c in comparisons for name in c.coders}
+    return [c for c in coders if c.name in needed]

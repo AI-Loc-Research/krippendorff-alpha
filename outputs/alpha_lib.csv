@@ -1,8 +1,0 @@
-comparison,component,n_units_3flag,pct_agree_3flag,alpha_3flag,n_units_binary,pct_agree_binary,alpha_binary,flags_mentee_adya,flags_llm_kimi
-adya_vs_llm,threat_source,25,0.96,0.0,25,0.96,0.0,C=24 A=0 N=1,C=25 A=0 N=0
-adya_vs_llm,objective_or_harmful_outcome,25,0.76,0.15517241379310343,25,0.84,0.25757575757575757,C=19 A=2 N=4,C=23 A=0 N=2
-adya_vs_llm,capability,25,0.92,0.6287878787878788,25,0.92,0.6287878787878788,C=23 A=0 N=2,C=21 A=0 N=4
-adya_vs_llm,knowledge,25,0.28,-0.265423242467719,25,0.32,-0.3413848631239935,C=15 A=4 N=6,C=4 A=0 N=21
-adya_vs_llm,access,25,0.64,0.3735795454545454,25,0.68,0.3466666666666667,C=13 A=4 N=8,C=13 A=0 N=12
-adya_vs_llm,constraints_or_enabling_conditions,25,0.6,0.05222437137330749,25,0.72,0.07046070460704612,C=17 A=4 N=4,C=20 A=0 N=5
-adya_vs_llm,target_or_asset_at_risk,25,0.72,0.2326621923937361,25,0.8,0.3360433604336044,C=18 A=2 N=5,C=21 A=0 N=4

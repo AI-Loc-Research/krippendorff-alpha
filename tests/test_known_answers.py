@@ -127,3 +127,21 @@ def test_missing_units_from_is_an_error(tmp_path):
     )
     with pytest.raises(ValueError, match="units_from"):
         load_config(tmp_path / "config.toml")
+
+
+
+# Choosing comparisons (--only) 
+
+def test_select_comparisons_and_needed_coders():
+    from kalpha_data import CoderSource, Comparison, coders_needed, select_comparisons
+
+    comps = [Comparison("humans", ["adya", "rujuta"]),
+             Comparison("adya_vs_llm", ["adya", "llm"])]
+    assert select_comparisons(comps, None) == comps
+    assert [c.name for c in select_comparisons(comps, ["humans"])] == ["humans"]
+    with pytest.raises(ValueError, match="Available"):
+        select_comparisons(comps, ["typo"])
+
+    coders = [CoderSource("llm", "x"), CoderSource("adya", "y"), CoderSource("rujuta", "z")]
+    needed = coders_needed(coders, select_comparisons(comps, ["humans"]), "adya")
+    assert [c.name for c in needed] == ["adya", "rujuta"]   # LLM not loaded

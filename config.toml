@@ -1,6 +1,7 @@
 # Which coding sheets to compare.
 
-# The coder whose scenarios define the units (your 25 sampled scenarios). (Must stay ABOVE the first [[coders]] block.)
+# The coder whose scenarios define the units (the 25 sampled scenarios).
+# Must stay ABOVE the first [[coders]] block.
 units_from = "mentee_adya"
 
 [[coders]]
@@ -11,14 +12,18 @@ sheet = "Sheet1"
 [[coders]]
 name = "mentee_adya"
 file = "materials/25_random_scenario_judgement_adya.xlsx"
-sheet = "Sheet1"
+sheet = "Judgment1"
 
 [[coders]]
 name = "mentee_rujuta"
 file = "materials/25_random_scenario_judgement_rujuta.xlsx"
-sheet = "Sheet1"
+sheet = "Judgment1"
 
+# Each comparison computes alpha over the listed coders.
+# Run all:   uv run python -m krippendorff_python_lib.alpha_lib
+# Run only humans (mentees):  uv run python -m krippendorff_python_lib.alpha_lib --only humans
 
+# MAIN RESULT: human vs human, i.e. is the codebook reliable?
 [[comparisons]]
 name = "humans"
 coders = ["mentee_adya", "mentee_rujuta"]
@@ -30,3 +35,8 @@ coders = ["mentee_adya", "llm_kimi"]
 [[comparisons]]
 name = "rujuta_vs_llm"
 coders = ["mentee_rujuta", "llm_kimi"]
+
+# Optional: ONE alpha with all three coders together.
+# [[comparisons]]
+# name = "all_three"
+# coders = ["mentee_adya", "mentee_rujuta", "llm_kimi"]

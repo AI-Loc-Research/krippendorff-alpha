@@ -64,33 +64,17 @@ krippendorff-alpha/
 
 ## Setup and run (uv)
 
-```powershell
-uv sync                                              # install dependencies
-uv run pytest -q                                     # known-answer tests (must pass)
-uv run python -m krippendorff_python_lib.alpha_lib   # run the comparison
+```Shell
+uv sync    
+
+# Know test and labels must passed
+uv run pytest -q   
+# known-answer tests (must pass)
+# Run all: 
+uv run python -m krippendorff_python_lib.alpha_lib
+# Run only humans (mentees): 
+uv run python -m krippendorff_python_lib.alpha_lib --only humans
 ```
-
-## Configuration
-
-```toml
-units_from = "mentee_adya"      # must be ABOVE the first [[coders]] block
-
-[[coders]]
-name = "mentee_adya"
-file = "materials/25_random_scenario_judgement_adya.xlsx"
-sheet = "Sheet1"
-
-[[coders]]
-name = "llm_kimi"
-file = "materials/scenario_final_resolved_llm_kimi.xlsx"
-sheet = "Sheet1"
-
-[[comparisons]]
-name = "adya_vs_llm"
-coders = ["mentee_adya", "llm_kimi"]
-```
-
-To add a coder, add a `[[coders]]` block and a `[[comparisons]]` entry.
 
 ## Reading the output
 

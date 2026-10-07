@@ -1,8 +1,9 @@
 """Krippendorff's alpha computed with the `krippendorff` library (fast-krippendorff).
 
 Run from the project root:
-    uv run python -m krippendorff_python_lib.alpha_lib
-    uv run python -m krippendorff_python_lib.alpha_lib --config config.toml --out outputs/alpha_lib.csv
+    uv run python -m krippendorff_python_lib.alpha_lib                      # all comparisons
+    uv run python -m krippendorff_python_lib.alpha_lib --only humans        # just one
+    uv run python -m krippendorff_python_lib.alpha_lib --only humans adya_vs_llm
 """
 
 from __future__ import annotations
@@ -13,21 +14,21 @@ from pathlib import Path
 import krippendorff
 import numpy as np
 import pandas as pd
-import time
 
 from kalpha_data import (
     COMPONENTS,
     VIEWS,
+    coders_needed,
     data_check_report,
     flag_counts,
     load_coding_data,
     load_config,
     pairable_units,
     percent_agreement,
+    select_comparisons,
 )
 
 THRESHOLD = 0.667  # Krippendorff: below this, do not rely on the data
-TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
 
 
 def alpha_nominal(matrix: np.ndarray) -> float:
@@ -64,9 +65,11 @@ def verdict(alpha: float) -> str:
     return "pass" if alpha >= THRESHOLD else "below 0.667"
 
 
-def print_table(df: pd.DataFrame) -> None:
+def print_table(df: pd.DataFrame, comparisons) -> None:
+    coders_of = {c.name: c.coders for c in comparisons}
     for name, block in df.groupby("comparison", sort=False):
-        print(f"\n=== {name}  (nominal alpha; threshold {THRESHOLD}) ===")
+        print(f"\n=== {name}: {' vs '.join(coders_of[name])}  "
+              f"(nominal alpha; threshold {THRESHOLD}) ===")
         print(f"{'component':36} {'n':>3} | {'%agree':>6} {'alpha':>7} {'':11} | "
               f"{'%agree':>6} {'alpha':>7} {'':11}")
         print(f"{'':36} {'':>3} | {'---- 3 flags ----':^26} | {'---- binary ----':^26}")
@@ -79,11 +82,16 @@ def print_table(df: pd.DataFrame) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", default="config.toml")
-    parser.add_argument("--out", default="outputs/alpha_lib.csv")
+    parser.add_argument("--only", nargs="+", metavar="NAME",
+                        help="run only these comparisons from config.toml (default: all)")
+    parser.add_argument("--out", default=None,
+                        help="CSV path (default: outputs/alpha_lib.csv, or "
+                             "outputs/alpha_lib_<names>.csv with --only)")
     args = parser.parse_args()
 
     coders, comparisons, units_from = load_config(args.config)
-    data = load_coding_data(coders, units_from)
+    comparisons = select_comparisons(comparisons, args.only)
+    data = load_coding_data(coders_needed(coders, comparisons, units_from), units_from)
 
     print("---- DATA CHECK (review this before trusting any alpha) ----")
     print(data_check_report(data))
@@ -91,9 +99,14 @@ def main() -> None:
     table = pd.concat(
         [alpha_table(data, c.name, c.coders) for c in comparisons], ignore_index=True
     )
-    print_table(table)
+    print_table(table, comparisons)
 
-    out = Path(args.out)
+    if args.out:
+        out = Path(args.out)
+    elif args.only:
+        out = Path(f"outputs/alpha_lib_{'_'.join(args.only)}.csv")
+    else:
+        out = Path("outputs/alpha_lib.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
     print(f"\nSaved: {out}")
@@ -101,4 +114,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
