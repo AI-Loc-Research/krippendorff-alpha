@@ -1,0 +1,28 @@
+# Which coding sheets to compare.
+# Paths are relative to this file. The FIRST coder defines the set of scenarios (units).
+
+
+[[coders]]
+name = "llm_kimi"
+file = "materials/scenario_final_resolved_llm_kimi.xlsx"
+sheet = "Sheet1"
+
+[[coders]]
+name = "mentee_adya"
+file = "materials/25_random_scenario_judgement_adya.xlsx"
+sheet = "Sheet1"
+
+# Add the second mentee when their sheet is ready:
+# [[coders]]
+# name = "mentee_rujuta"
+# file = "materials/25_random_scenario_judgement_<name>.xlsx"
+# sheet = "Sheet1"
+
+# Each comparison computes alpha over the listed coders.
+[[comparisons]]
+name = "adya_vs_llm"
+coders = ["mentee_adya", "llm_kimi"]
+
+# [[comparisons]]
+# name = "humans"
+# coders = ["mentee_adya", "mentee_rujuta"]
