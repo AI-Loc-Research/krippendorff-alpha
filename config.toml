@@ -1,6 +1,7 @@
 # Which coding sheets to compare.
-# Paths are relative to this file. The FIRST coder defines the set of scenarios (units).
 
+# The coder whose scenarios define the units (your 25 sampled scenarios). (Must stay ABOVE the first [[coders]] block.)
+units_from = "mentee_adya"
 
 [[coders]]
 name = "llm_kimi"

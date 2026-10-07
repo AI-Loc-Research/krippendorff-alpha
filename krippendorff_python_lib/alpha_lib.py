@@ -80,8 +80,8 @@ def main() -> None:
     parser.add_argument("--out", default="outputs/alpha_lib.csv")
     args = parser.parse_args()
 
-    coders, comparisons = load_config(args.config)
-    data = load_coding_data(coders)
+    coders, comparisons, units_from = load_config(args.config)
+    data = load_coding_data(coders, units_from)
 
     print("---- DATA CHECK (review this before trusting any alpha) ----")
     print(data_check_report(data))
@@ -99,3 +99,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

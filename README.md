@@ -1,47 +1,143 @@
-### Why Two Script?
+# Krippendorff's Alpha: Reliability of Threat-Model Component Coding
 
-Use two script, 1) Python library and 2) Custom script with our understanding and refernces for cross check
+Human coders independently flag a random sample of 25 scenarios (one per paper, 25 papers) using the same codebook as the LLM. The scripts here measure agreement between `coders`, `human (mentee) vs human (mentee)` and `human vs LLM`, with **Krippendorff's alpha (α)**, the standard chance-corrected reliability coefficient in content analysis.
 
-* Krippendorff (2011), Computing Krippendorff-Alpha-Reliability (PDF) _Penn repository use this same paper_
-* [fast-krippendorff (the `krippendorff` Python package)](https://github.com/pln-fing-udelar/fast-krippendorff)
+The seven components: _threat source, objective or harmful outcome, capability, knowledge, access, constraints or enabling conditions, target or asset at risk._
 
-**Layout** (5 code files):
+## What Krippendorff's alpha measures
 
-```Markdown
-krippendorff-alpha/
-├── pyproject.toml              ← uv project: pandas, openpyxl, numpy, krippendorff, pytest
-├── config.toml                 ← WHICH sheets to compare (coder name → file path)
-├── materials/                  ← your Excel inputs
-├── kalpha_data.py              ← SHARED: load → clean → match → encode → build matrices
-├── krippendorff_python_lib/
-│   └── alpha_lib.py            ← computes α with the `krippendorff` library
-├── custom_krippendorff/
-│   └── alpha_custom.py         ← computes α from scratch (Krippendorff 2011 steps)
-├── run_compare.py              ← runs both, checks they agree, writes the report
-├── tests/test_known_answers.py ← the 9 known-answer cases (.095, .692, .743 …)
-└── outputs/                    ← CSV reports (generated)
+Two coders can agree simply by chance, especially when one flag dominates. Alpha removes that chance agreement:    α = 1 − Dₒ / Dₑ
+
+- **Dₒ (observed disagreement):** how often coders actually gave different flags to the same scenario.
+- **Dₑ (expected disagreement):** how often two flags drawn at random from *all* flags given (pooled across coders, without replacement) would differ.
+
+| α             | Meaning                                     |
+| -------------- | ------------------------------------------- |
+| 1              | perfect agreement                           |
+| 0              | no better than chance                       |
+| < 0            | systematic disagreement (worse than chance) |
+| ≥ 0.800       | reliable                                    |
+| 0.667 – 0.800 | acceptable for tentative conclusions only   |
+| < 0.667        | do not rely on the data                     |
+
+## Why two implementations
+
+1. **`krippendorff_python_lib/`** uses the [`krippendorff`](https://github.com/pln-fing-udelar/fast-krippendorff) Python package (v0.9.0).
+2. **`custom_krippendorff/`** is our from-scratch implementation of the four steps in
+   Krippendorff (2011): reliability data matrix → coincidence matrix → difference function → α. _[for cross check]_
+
+Both read identical cleaned data from `kalpha_data.py` and must produce the same α. Agreement between two independent implementations, plus reproducing the published  worked examples, is our evidence that the numbers are correct.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[config.toml] --> B[Load sheets] --> C[Find flag columns] --> D[Keep scenario rows]
+    D --> E[Match on paper_id + scenario_id] --> F[Normalize spellings] --> G[Encode]
+    G --> H[Reliability matrix per component] --> I[Data check] --> J[α + % agreement] --> K[Report + CSV]
 ```
 
----
+- **Units:** the scenarios of the coder named in `units_from` (the 25 sampled scenarios). Other sheets may contain more rows (the LLM sheet has 193); they are ignored.
+- **Normalization:** `'Clear '`, `'clear'` → Clear; `'Not Specified'` → Not specified; `'\nAmbiguous'` → Ambiguous. Unknown values stop the run with the exact cell named.
 
-## Expected Pipeline of Krippendorff's Alpha
+**### Two views:** **3 flags and **B**inary**
 
-### a) Giving Input
+**- 3 flags** (Clear / Ambiguous / Not specified
 
-List all excel sheets once in a small `config.toml`, one entry per "coder":
+**- Binary** (specified = Clear or Ambiguous vs Not specified, the paper's definition).
+
+> Both use nominal α.
+
+## Project layout
+
+```
+krippendorff-alpha/
+├── config.toml                  # which sheets to compare
+├── kalpha_data.py               # shared: load, clean, match, encode, matrices
+├── krippendorff_python_lib/
+│   └── alpha_lib.py             # α via the krippendorff package
+├── custom_krippendorff/         # α from scratch (in progress)
+├── tests/test_known_answers.py  # published + hand-computed test cases
+├── materials/                   # coding sheets (not for public release)
+└── outputs/                     # generated CSV reports
+```
+
+## Setup and run (uv)
+
+```powershell
+uv sync                                              # install dependencies
+uv run pytest -q                                     # known-answer tests (must pass)
+uv run python -m krippendorff_python_lib.alpha_lib   # run the comparison
+```
+
+## Configuration
 
 ```toml
-[coders.mentee_adya]
-file  = "materials/25_random_scenario_judgement_adya.xlsx"
-[coders.llm_kimi]
-file  = "../loss-of-control-definition/materials/scenario_final_resolved.xlsx"
+units_from = "mentee_adya"      # must be ABOVE the first [[coders]] block
+
+[[coders]]
+name = "mentee_adya"
+file = "materials/25_random_scenario_judgement_adya.xlsx"
 sheet = "Sheet1"
-# later, one more line pair:
-# [coders.mentee2]
-# file = "materials/25_random_scenario_judgement_<name>.xlsx"
+
+[[coders]]
+name = "llm_kimi"
+file = "materials/scenario_final_resolved_llm_kimi.xlsx"
+sheet = "Sheet1"
+
+[[comparisons]]
+name = "adya_vs_llm"
+coders = ["mentee_adya", "llm_kimi"]
 ```
 
-Then a single command runs everything: `uv run python run_compare.py`. Adding the other mentee later is just one more entry. The LLM's flags aren't in your `krippendorff-alpha/materials` folder; the config can point at the repo's copy, or you can copy the file in.
+To add a coder, add a `[[coders]]` block and a `[[comparisons]]` entry.
+
+## Reading the output
+
+1. **DATA CHECK.** Flag counts per coder per component. Review these first: if they are wrong, every α after them is wrong.
+2. **α table.** Per component: number of scenarios, % agreement and α for both views, and the verdict against 0.667.
+3. **`outputs/alpha_lib.csv`**: the same table, with each coder's flag counts.
+
+**Interpretation pitfalls:**
+
+- **High agreement, low α.** When one flag dominates (e.g. threat source is almost
+  always present), chance agreement is high and α drops. Always read α together with
+  % agreement and flag counts (Feinstein & Cicchetti, 1990).
+- **α = 0 with near-perfect agreement.** If one coder gives the same flag to every
+  scenario, α cannot exceed 0.
+- **Undefined α.** If every coder gives the same flag everywhere, α is 0/0 and is
+  reported as `undefined`.
+- **Small samples.** With 25 scenarios, one changed flag can move α substantially.
+- **Reliability ≠ accuracy.** Human-vs-human α tests the codebook. Whether the LLM is
+  *right* is measured separately (precision/recall against the human consensus).
+
+## Tests
+
+`tests/test_known_answers.py` checks that the code reproduces:
+
+- Krippendorff (2011) worked examples: binary α = 0.095, nominal α = 0.692, and
+  4 coders with missing data α = 0.743;
+- hand-computed cases: α = 0.631 (3 flags), α = 0 (rare category), undefined (no variation);
+- the cleaning rules (spellings, messy headers, notes rows, `units_from`).
+
+## Status
+
+- [X] Shared data pipeline and library implementation
+- [ ] From-scratch implementation + cross-check
+- [ ] Bootstrap confidence intervals
+- [ ] Second human coder; human-vs-human α
+- [ ] Consensus labels; LLM precision/recall vs consensus
+
+## References
+
+- Krippendorff, K. (2011). *Computing Krippendorff's Alpha-Reliability.* Annenberg School
+  for Communication. [PDF](<https://www.asc.upenn.edu/sites/default/files/2021-03/Computing%20Krippendorff%27s%20Alpha-Reliability.pdf>)
+- Hayes, A. F., & Krippendorff, K. (2007). Answering the call for a standard reliability
+  measure for coding data. *Communication Methods and Measures*, 1(1), 77–89.
+- Krippendorff, K. (2004/2013). *Content Analysis: An Introduction to Its Methodology.* Sage.
+- Feinstein, A. R., & Cicchetti, D. V. (1990). High agreement but low kappa: I. The
+  problems of two paradoxes. *Journal of Clinical Epidemiology*, 43(6), 543–549.
+- [fast-krippendorff](https://github.com/pln-fing-udelar/fast-krippendorff), the `krippendorff` Python packag
 
 ### *The pipeline*
 
@@ -103,21 +199,3 @@ flowchart TD
     threat_source 25    …          …               …        …        …
     ...
     ```
-
-    Following our earlier agreement, before your consensus meeting the report shows **only these summary numbers**, not which rows you and the LLM labelled differently.
-
----
-
-## What uv setup will look like (preview)
-
-Run inside `krippendorff-alpha/`:
-
-```powershell
-uv init --bare                         # creates pyproject.toml only
-uv add pandas openpyxl numpy krippendorff
-uv add --dev pytest
-uv run pytest                          # known-answer tests first
-uv run python run_compare.py           # then the real comparison
-```
-
-Once you've decided the four points above, I'll write the files here in chat, starting with the shared `kalpha_data.py` and the library script as you asked, for you to paste in.

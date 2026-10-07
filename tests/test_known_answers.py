@@ -87,3 +87,43 @@ def test_messy_headers_and_notes_rows():
     assert list(cf.flags.index) == ["p1/S1"]
     assert cf.flags.loc["p1/S1", "access"] == "Clear"
     assert len(cf.skipped_rows) == 1
+
+
+
+# --- Config: units come from `units_from`, not from the order of [[coders]] -----------
+
+def _write_sheet(path, keys):
+    cols = {f"{c}_uncertainty": "Clear" for c in [
+        "threat_source", "objective_or_harmful_outcome", "capability", "knowledge",
+        "access", "constraints_or_enabling_conditions", "target_or_asset_at_risk"]}
+    pd.DataFrame([{"paper_id": p, "scenario_id": s, **cols} for p, s in keys]).to_excel(
+        path, index=False)
+
+
+def test_units_from_ignores_coder_order(tmp_path):
+    from kalpha_data import load_coding_data, load_config
+
+    _write_sheet(tmp_path / "big.xlsx", [("p1", "S1"), ("p1", "S2"), ("p2", "S1")])  # like the LLM
+    _write_sheet(tmp_path / "small.xlsx", [("p2", "S1"), ("p1", "S1")])               # like a mentee
+    (tmp_path / "config.toml").write_text(
+        'units_from = "mentee"\n'
+        '[[coders]]\nname = "llm"\nfile = "big.xlsx"\n'       # listed FIRST on purpose
+        '[[coders]]\nname = "mentee"\nfile = "small.xlsx"\n'
+        '[[comparisons]]\nname = "x"\ncoders = ["mentee", "llm"]\n'
+    )
+    coders, _, units_from = load_config(tmp_path / "config.toml")
+    data = load_coding_data(coders, units_from)
+    assert data.units == ["p2/S1", "p1/S1"]
+    assert data.extra_rows_ignored == {"llm": 1, "mentee": 0}
+
+
+def test_missing_units_from_is_an_error(tmp_path):
+    from kalpha_data import load_config
+
+    (tmp_path / "config.toml").write_text(
+        '[[coders]]\nname = "a"\nfile = "a.xlsx"\n'
+        '[[coders]]\nname = "b"\nfile = "b.xlsx"\n'
+        '[[comparisons]]\nname = "x"\ncoders = ["a", "b"]\n'
+    )
+    with pytest.raises(ValueError, match="units_from"):
+        load_config(tmp_path / "config.toml")

@@ -61,8 +61,12 @@ class Comparison:
     coders: list[str]
 
 
-def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison]]:
-    """Read config.toml. Relative file paths are resolved against the config's folder."""
+def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], str]:
+    """Read config.toml. Relative file paths are resolved against the config's folder.
+
+    Returns (coders, comparisons, units_from). `units_from` names the coder whose
+    scenarios define the units; every other coder must contain those scenarios.
+    """
     path = Path(path)
     with open(path, "rb") as f:
         cfg = tomllib.load(f)
@@ -75,6 +79,15 @@ def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison]]:
     if len(set(names)) != len(names):
         raise ValueError(f"Duplicate coder names in {path}: {names}")
 
+    units_from = cfg.get("units_from")
+    if units_from is None:
+        raise ValueError(
+            f'{path}: add  units_from = "<coder name>"  at the top of the file '
+            "(before any [[coders]] block)"
+        )
+    if units_from not in names:
+        raise ValueError(f"units_from = {units_from!r} is not one of the coders {names}")
+
     comparisons = [Comparison(c["name"], list(c["coders"])) for c in cfg["comparisons"]]
     for comp in comparisons:
         unknown = [n for n in comp.coders if n not in names]
@@ -82,7 +95,8 @@ def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison]]:
             raise ValueError(f"Comparison '{comp.name}' uses unknown coder(s): {unknown}")
         if len(comp.coders) < 2:
             raise ValueError(f"Comparison '{comp.name}' needs at least 2 coders")
-    return coders, comparisons
+    return coders, comparisons, units_from
+
 
 
 # Cleaning helpers
@@ -177,10 +191,10 @@ def extract_flags(df: pd.DataFrame, coder: str) -> CoderFlags:
 
 
 # all coders, aligned
-
 @dataclass
 class CodingData:
-    units: list[str]                    # unit keys, in the first coder's order
+    units_from: str                     # coder whose scenarios define the units
+    units: list[str]                    # unit keys, in that coder's order
     flags: dict[str, pd.DataFrame]      # coder -> flags for exactly `units`
     skipped_rows: dict[str, list[str]]
     extra_rows_ignored: dict[str, int]  # e.g. LLM sheet has 193 rows, we use 25
@@ -199,22 +213,28 @@ class CodingData:
         return out
 
 
-def load_coding_data(coders: list[CoderSource]) -> CodingData:
-    """Steps 1-5 for all coders, then align everyone on the first coder's units."""
+def load_coding_data(coders: list[CoderSource], units_from: str) -> CodingData:
+    """Steps 1-5 for all coders, then align everyone on the `units_from` coder's units."""
     extracted = []
     for src in coders:
         df = pd.read_excel(src.file, sheet_name=src.sheet, dtype=object)
         extracted.append(extract_flags(df, src.name))
 
-    units = list(extracted[0].flags.index)
+    by_name = {cf.name: cf for cf in extracted}
+    units = list(by_name[units_from].flags.index)
     flags, extra = {}, {}
     for cf in extracted:
         missing = [u for u in units if u not in cf.flags.index]
         if missing:
-            raise ValueError(f"{cf.name} is missing {len(missing)} scenario(s): {missing}")
+            raise ValueError(
+                f"{cf.name} is missing {len(missing)} of the {len(units)} scenarios defined by "
+                f"units_from = '{units_from}'. First few: {missing[:5]}"
+            )
         flags[cf.name] = cf.flags.loc[units]
         extra[cf.name] = len(cf.flags.index) - len(units)
-    return CodingData(units, flags, {cf.name: cf.skipped_rows for cf in extracted}, extra)
+    return CodingData(
+        units_from, units, flags, {cf.name: cf.skipped_rows for cf in extracted}, extra
+    )
 
 
 # descriptive numbers
@@ -248,7 +268,8 @@ def flag_counts(data: CodingData, coder: str, component: str) -> str:
 
 def data_check_report(data: CodingData) -> str:
     """Step 8: what was loaded, before any alpha is computed."""
-    lines = [f"Units (scenarios): {len(data.units)}"]
+    lines = [f"Units (scenarios): {len(data.units)}, taken from '{data.units_from}'"]
+
     for coder in data.flags:
         lines.append(f"\n[{coder}]")
         if data.extra_rows_ignored[coder]:
