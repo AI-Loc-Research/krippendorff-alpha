@@ -13,6 +13,7 @@ from pathlib import Path
 import krippendorff
 import numpy as np
 import pandas as pd
+import time
 
 from kalpha_data import (
     COMPONENTS,
@@ -26,6 +27,7 @@ from kalpha_data import (
 )
 
 THRESHOLD = 0.667  # Krippendorff: below this, do not rely on the data
+TIMESTAMP = time.strftime("%Y%m%d_%H%M%S")
 
 
 def alpha_nominal(matrix: np.ndarray) -> float:

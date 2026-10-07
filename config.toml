@@ -13,17 +13,20 @@ name = "mentee_adya"
 file = "materials/25_random_scenario_judgement_adya.xlsx"
 sheet = "Sheet1"
 
-# Add the second mentee when their sheet is ready:
-# [[coders]]
-# name = "mentee_rujuta"
-# file = "materials/25_random_scenario_judgement_<name>.xlsx"
-# sheet = "Sheet1"
+[[coders]]
+name = "mentee_rujuta"
+file = "materials/25_random_scenario_judgement_rujuta.xlsx"
+sheet = "Sheet1"
 
-# Each comparison computes alpha over the listed coders.
+
+[[comparisons]]
+name = "humans"
+coders = ["mentee_adya", "mentee_rujuta"]
+
 [[comparisons]]
 name = "adya_vs_llm"
 coders = ["mentee_adya", "llm_kimi"]
 
-# [[comparisons]]
-# name = "humans"
-# coders = ["mentee_adya", "mentee_rujuta"]
+[[comparisons]]
+name = "rujuta_vs_llm"
+coders = ["mentee_rujuta", "llm_kimi"]
