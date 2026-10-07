@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import time
 
 import krippendorff
 import numpy as np
@@ -29,7 +30,7 @@ from kalpha_data import (
 )
 
 THRESHOLD = 0.667  # Krippendorff: below this, do not rely on the data
-
+TIMESTAMP = time.strftime("%Y%m%d_%H%M")
 
 def alpha_nominal(matrix: np.ndarray) -> float:
     """Nominal alpha for a coders x units matrix (NaN = missing).
@@ -104,9 +105,9 @@ def main() -> None:
     if args.out:
         out = Path(args.out)
     elif args.only:
-        out = Path(f"outputs/alpha_lib_{'_'.join(args.only)}.csv")
+        out = Path(f"results/lib_ka_result_{'_'.join(args.only)}_{TIMESTAMP}.csv")
     else:
-        out = Path("outputs/alpha_lib.csv")
+        out = Path(f"results/lib_ka_result_all_{TIMESTAMP}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
     print(f"\nSaved: {out}")
