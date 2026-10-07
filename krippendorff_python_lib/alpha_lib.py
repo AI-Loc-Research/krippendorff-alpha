@@ -16,7 +16,7 @@ import krippendorff
 import numpy as np
 import pandas as pd
 
-from kalpha_data import (
+from data_preprocessing import (
     COMPONENTS,
     VIEWS,
     coders_needed,

@@ -26,7 +26,7 @@ Two coders can agree simply by chance, especially when one flag dominates. Alpha
 2. **`custom_krippendorff/`** is our from-scratch implementation of the four steps in
    Krippendorff (2011): reliability data matrix → coincidence matrix → difference function → α. _[for cross check]_
 
-Both read identical cleaned data from `kalpha_data.py` and must produce the same α. Agreement between two independent implementations, plus reproducing the published  worked examples, is our evidence that the numbers are correct.
+Both read identical cleaned data from `data_preprocessing.py` and must produce the same α. Agreement between two independent implementations, plus reproducing the published  worked examples, is our evidence that the numbers are correct.
 
 ## How it works
 
@@ -53,7 +53,7 @@ flowchart LR
 ```
 krippendorff-alpha/
 ├── config.toml                  # which sheets to compare
-├── kalpha_data.py               # shared: load, clean, match, encode, matrices
+├── data_preprocessing.py               # shared: load, clean, match, encode, matrices
 ├── krippendorff_python_lib/
 │   └── alpha_lib.py             # α via the krippendorff package
 ├── custom_krippendorff/         # α from scratch (in progress)

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kalpha_data import extract_flags, normalize_flag, percent_agreement
+from data_preprocessing import extract_flags, normalize_flag, percent_agreement
 from krippendorff_python_lib.alpha_lib import alpha_nominal
 
 nan = np.nan
@@ -101,7 +101,7 @@ def _write_sheet(path, keys):
 
 
 def test_units_from_ignores_coder_order(tmp_path):
-    from kalpha_data import load_coding_data, load_config
+    from data_preprocessing import load_coding_data, load_config
 
     _write_sheet(tmp_path / "big.xlsx", [("p1", "S1"), ("p1", "S2"), ("p2", "S1")])  # like the LLM
     _write_sheet(tmp_path / "small.xlsx", [("p2", "S1"), ("p1", "S1")])               # like a mentee
@@ -118,7 +118,7 @@ def test_units_from_ignores_coder_order(tmp_path):
 
 
 def test_missing_units_from_is_an_error(tmp_path):
-    from kalpha_data import load_config
+    from data_preprocessing import load_config
 
     (tmp_path / "config.toml").write_text(
         '[[coders]]\nname = "a"\nfile = "a.xlsx"\n'
@@ -133,7 +133,7 @@ def test_missing_units_from_is_an_error(tmp_path):
 # Choosing comparisons (--only) 
 
 def test_select_comparisons_and_needed_coders():
-    from kalpha_data import CoderSource, Comparison, coders_needed, select_comparisons
+    from data_preprocessing import CoderSource, Comparison, coders_needed, select_comparisons
 
     comps = [Comparison("humans", ["adya", "rujuta"]),
              Comparison("adya_vs_llm", ["adya", "llm"])]
