@@ -40,15 +40,13 @@ FLAG_ALIASES = {
     "not_specified": "Not specified",
 }
 
-# "3flag" keeps Clear / Ambiguous / Not specified.
-# "binary" = the paper's definition: specified (Clear or Ambiguous) vs Not specified.
+# "3flag" keeps [Clear, Ambiguous, Not specified]
+# "binary" = the paper's definition: [Clear + Ambiguous, Not specified]
 VIEWS = ("3flag", "binary")
 
 SCENARIO_ID = re.compile(r"^S\d+$")
 
-
 # config
-
 @dataclass
 class CoderSource:
     name: str
@@ -63,7 +61,6 @@ class Comparison:
 
 def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], str]:
     """Read config.toml. Relative file paths are resolved against the config's folder.
-
     Returns (coders, comparisons, units_from). `units_from` names the coder whose
     scenarios define the units; every other coder must contain those scenarios.
     """
@@ -82,9 +79,7 @@ def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], 
     units_from = cfg.get("units_from")
     if units_from is None:
         raise ValueError(
-            f'{path}: add  units_from = "<coder name>"  at the top of the file '
-            "(before any [[coders]] block)"
-        )
+            f'{path}: add  units_from = "<coder name>"  at the top of the file ' "(before any [[coders]] block)")
     if units_from not in names:
         raise ValueError(f"units_from = {units_from!r} is not one of the coders {names}")
 
@@ -97,10 +92,7 @@ def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], 
             raise ValueError(f"Comparison '{comp.name}' needs at least 2 coders")
     return coders, comparisons, units_from
 
-
-
 # Cleaning helpers
-
 def clean_text(value) -> str:
     """Collapse all whitespace (spaces, tabs, newlines) to single spaces and strip."""
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -122,8 +114,7 @@ def normalize_flag(value) -> str | None:
 
 
 def find_flag_columns(df: pd.DataFrame) -> dict[str, str]:
-    """For each component, find the ONE column whose cleaned name starts with the
-    component name and contains 'uncert' (e.g. 'access_uncertaintyt' still matches;
+    """For each component, find the ONE column whose cleaned name starts with the component name and contains 'uncert' (e.g. 'access_uncertaintyt' still matches;
     '..._evidence' columns never do)."""
     found, problems = {}, []
     for comp in COMPONENTS:
@@ -139,7 +130,6 @@ def find_flag_columns(df: pd.DataFrame) -> dict[str, str]:
         raise ValueError("Could not locate flag columns:\n  " + "\n  ".join(problems))
     return found
 
-
 def find_column(df: pd.DataFrame, wanted: str) -> str:
     matches = [col for col in df.columns if clean_header(col) == wanted]
     if len(matches) != 1:
@@ -148,7 +138,6 @@ def find_column(df: pd.DataFrame, wanted: str) -> str:
 
 
 # one coder's sheet
-
 @dataclass
 class CoderFlags:
     name: str
@@ -236,9 +225,7 @@ def load_coding_data(coders: list[CoderSource], units_from: str) -> CodingData:
         units_from, units, flags, {cf.name: cf.skipped_rows for cf in extracted}, extra
     )
 
-
-# descriptive numbers
-
+# descriptive numbers (metrics)
 def percent_agreement(matrix: np.ndarray) -> float:
     """Share of agreeing coder pairs, averaged over units with >= 2 values."""
     scores = []
@@ -252,10 +239,8 @@ def percent_agreement(matrix: np.ndarray) -> float:
         scores.append(agree / pairs)
     return float(np.mean(scores)) if scores else float("nan")
 
-
 def pairable_units(matrix: np.ndarray) -> int:
     return int(((~np.isnan(matrix)).sum(axis=0) >= 2).sum())
-
 
 def flag_counts(data: CodingData, coder: str, component: str) -> str:
     """e.g. 'C=15 A=4 N=6' (and 'missing=1' if any)."""
@@ -268,7 +253,7 @@ def flag_counts(data: CodingData, coder: str, component: str) -> str:
 
 def data_check_report(data: CodingData) -> str:
     """Step 8: what was loaded, before any alpha is computed."""
-    lines = [f"Units (scenarios): {len(data.units)}, taken from '{data.units_from}'"]
+    lines = [f"\n• Units (Scenarios): {len(data.units)}"]
 
     for coder in data.flags:
         lines.append(f"\n[{coder}]")

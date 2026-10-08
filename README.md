@@ -65,7 +65,7 @@ krippendorff-alpha/
 ## Setup and run (uv)
 
 ```Shell
-uv sync    
+uv sync  
 
 # Know test and labels must passed
 uv run pytest -q   

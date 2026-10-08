@@ -63,19 +63,18 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
 def verdict(alpha: float) -> str:
     if np.isnan(alpha):
         return "undefined"
-    return "pass" if alpha >= THRESHOLD else "below 0.667"
+    return "PASS" if alpha >= THRESHOLD else "below 0.667"
 
 
 def print_table(df: pd.DataFrame, comparisons) -> None:
     coders_of = {c.name: c.coders for c in comparisons}
     for name, block in df.groupby("comparison", sort=False):
-        print(f"\n=== {name}: {' vs '.join(coders_of[name])}  "
-              f"(nominal alpha; threshold {THRESHOLD}) ===")
-        print(f"{'component':36} {'n':>3} | {'%agree':>6} {'alpha':>7} {'':11} | "
+        print(f"\n• {name} judgement; between: {' vs '.join(coders_of[name])} (THRESHOLD: {THRESHOLD})\n")
+        print(f"{'component':36} | {'%agree':>6} {'alpha':>7} {'':11} | "
               f"{'%agree':>6} {'alpha':>7} {'':11}")
-        print(f"{'':36} {'':>3} | {'---- 3 flags ----':^26} | {'---- binary ----':^26}")
+        print(f"{'':36} |{'----- 3 flags -----':^26} | {'----- binary -----':^26}")
         for _, r in block.iterrows():
-            print(f"{r.component:36} {r.n_units_3flag:>3} | "
+            print(f"{r.component:36} | "
                   f"{r.pct_agree_3flag:>6.1%} {r.alpha_3flag:>7.3f} {verdict(r.alpha_3flag):11} | "
                   f"{r.pct_agree_binary:>6.1%} {r.alpha_binary:>7.3f} {verdict(r.alpha_binary):11}")
 
@@ -86,15 +85,14 @@ def main() -> None:
     parser.add_argument("--only", nargs="+", metavar="NAME",
                         help="run only these comparisons from config.toml (default: all)")
     parser.add_argument("--out", default=None,
-                        help="CSV path (default: outputs/alpha_lib.csv, or "
-                             "outputs/alpha_lib_<names>.csv with --only)")
+                        help="CSV path (default: result/result_TIMESTAMP.csv, or "
+                             "outputs/result_<names>_TIMESTAMP.csv with --only)")
     args = parser.parse_args()
 
     coders, comparisons, units_from = load_config(args.config)
     comparisons = select_comparisons(comparisons, args.only)
     data = load_coding_data(coders_needed(coders, comparisons, units_from), units_from)
 
-    print("---- DATA CHECK (review this before trusting any alpha) ----")
     print(data_check_report(data))
 
     table = pd.concat(
