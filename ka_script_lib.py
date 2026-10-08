@@ -108,7 +108,7 @@ def main() -> None:
     )
     print_table(table, comparisons)
 
-    out = RESULTS / f"lib_ka_result_{mode}_{TIMESTAMP}.csv"
+    out = RESULTS / f"KA_result_{mode}_{TIMESTAMP}.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     table.round(4).to_csv(out, index=False)  # 4 decimals in the file; charts use full precision
     print(f"\nSaved: {out.relative_to(PROJECT)}")

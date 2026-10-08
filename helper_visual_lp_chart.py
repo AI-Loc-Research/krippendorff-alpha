@@ -76,7 +76,7 @@ def wrap_label(component: str) -> str:
 
 
 def chart_path(csv_path: Path) -> Path:
-    """results/lib_ka_result_llm_<time>.csv -> results/lib_ka_chart_llm_<time>.png"""
+    """in results folder"""
     csv_path = Path(csv_path)
     stem = csv_path.stem
     name = stem.replace("_result_", "_chart_") if "_result_" in stem else f"{stem}_chart"

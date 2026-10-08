@@ -49,11 +49,11 @@ def test_constant_flag():
 
 
 def test_file_names():
-    csv = "results/lib_ka_result_llm_20261008_1500.csv"
-    assert chart_path(csv).name == "lib_ka_chart_llm_20261008_1500.png"
-    assert table_path(csv, "humans").name == "lib_ka_labels_humans_20261008_1500.png"
+    csv = "results/lib_KA_chart_llm_20261008_1500.csv"
+    assert chart_path(csv).name == "lib_KA_chart_llm_20261008_1500.png"
+    assert table_path(csv, "humans").name == "lib_KA_labels_humans_20261008_1500.png"
     assert (table_path(csv, "Combined (llm+human)").name
-            == "lib_ka_labels_combined_llm_human_20261008_1500.png")
+            == "lib_KA_labels_combined_llm_human_20261008_1500.png")
     assert chart_path("my_run.csv").name == "my_run_chart.png"
 
 
