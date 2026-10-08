@@ -40,22 +40,21 @@ STATUS = {
     "tentative": (WARNING, "0.667 <= alpha < 0.800  tentative only"),
     "below": (CRITICAL, "alpha < 0.667  do not rely on the data"),
 }
-PERFECT_LABEL = "100% agreement, no variation (alpha not defined)"
 DOTTED = (0, (1, 2))
-INK, INK_2, MUTED = "#0b0b0b", "#52514e", "#898781"
+INK, INK_2, MUTED = "#0b0b0b", "#4a4641", "#898781"
 BASELINE = "#c3c2b7"
 PAGE, CARD, CARD_EDGE = "#ebeeec", "#ffffff", "#d6dcd8"  # light bluish-beige page, white cards
 
 # Layout in inches
-PANEL = 7.5                          # each card is PANEL x PANEL
+PANEL = 8                       # each card is PANEL x PANEL
 GAP = 0.2                            # space between cards
-TOP, BOTTOM = 0.95, 0.7              # page bands: title above, legend below
-SIDE = (TOP + BOTTOM) / 2            # equal side margins keep the image square
+TOP, BOTTOM = 0.85, 0.43            # page bands: title above, legend below
+SIDE = (TOP + BOTTOM) / 2.2            # equal side margins keep the image square
 INSET_LEFT, INSET_RIGHT, INSET_TOP, INSET_BOTTOM = 1.9, 0.9, 1.2, 0.85  # axes inside a card
 
 _INSTALLED = {f.name for f in font_manager.fontManager.ttflist}
 FONT = next((f for f in ("Segoe UI", "Helvetica Neue", "Arial") if f in _INSTALLED), "DejaVu Sans")
-plt.rcParams.update({"font.family": FONT, "font.size": 12, "axes.edgecolor": BASELINE,
+plt.rcParams.update({"font.family": FONT, "font.size": 13, "axes.edgecolor": BASELINE,
                      "axes.labelcolor": INK_2, "xtick.color": MUTED, "ytick.color": INK})
 
 
@@ -96,10 +95,16 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
     fig_w, fig_h = fig.get_size_inches()
     _card(fig, x, y, PANEL, PANEL)
     cx = (x + PANEL / 2) / fig_w
-    fig.text(cx, (y + PANEL - 0.36) / fig_h, name, ha="center", va="center",
-             fontsize=15, fontweight="semibold", color=INK)
-    fig.text(cx, (y + PANEL - 0.7) / fig_h, "  vs  ".join(coders), ha="center", va="center",
-             fontsize=11.5, color=INK_2)
+    fig.text(
+        cx,
+        (y + PANEL - 0.36) / fig_h,
+        f"{name} judgements: {'  vs  '.join(coders)}",
+        ha="center",
+        va="center",
+        fontsize=15,
+        fontweight="semibold",
+        color=INK,
+    )
 
     ax = fig.add_axes([(x + INSET_LEFT) / fig_w, (y + INSET_BOTTOM) / fig_h,
                        (PANEL - INSET_LEFT - INSET_RIGHT) / fig_w,
@@ -115,14 +120,14 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.tick_params(axis="y", length=0)
-    ax.set_yticks(ys, [wrap_label(c) for c in components], fontsize=11, linespacing=1.15)
+    ax.set_yticks(ys, [wrap_label(c) for c in components], fontsize=13, linespacing=1.15)
     ax.set_xlabel("Krippendorff's alpha", fontsize=11.5, color=INK_2)
 
     ax.axvline(0, color=BASELINE, linewidth=1, zorder=1)
     for threshold, label in ((TENTATIVE, "0.667"), (RELIABLE, "0.800")):
         ax.axvline(threshold, color=INK_2, linewidth=1, linestyle=(0, (4, 3)), zorder=1)
         ax.text(threshold, 1.015, label, transform=ax.get_xaxis_transform(),
-                ha="center", va="bottom", fontsize=10.5, color=INK_2)
+                ha="center", va="bottom", fontsize=11.5, color=INK_2)
 
     ax.text(1.06, 1.015, "% agree", transform=ax.transAxes, ha="left", va="bottom",
             fontsize=10.5, color=INK_2)
@@ -139,12 +144,10 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
                 ax.text(0.03 * span, yi, "no data", va="center", ha="left", fontsize=10.5,
                         color=MUTED)
                 continue
-            # 100% agreement, alpha = 0/0: dotted line from 0 to the "% agree" column
+            # 100% agreement, alpha = 0/0: line from 0 to the "% agree" column
             ax.plot([-x_min / span, 1.045], [yi, yi], transform=ax.get_yaxis_transform(),
-                    color=GOOD, linewidth=2.6, linestyle=DOTTED, dash_capstyle="round",
-                    clip_on=False, zorder=2)
-            ax.text(0.01, yi + 0.18, f"100% agreement: every coder gave '{flag}'  ·  "
-                    "alpha not defined", transform=ax.get_yaxis_transform(), va="bottom",
+                    color=GOOD, linewidth=2.6, clip_on=False, zorder=2)
+            ax.text(0.01, yi + 0.18, f"100% agreement", transform=ax.get_yaxis_transform(), va="bottom",
                     ha="left", fontsize=10, color=INK_2, zorder=4,
                     bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))
             continue
@@ -153,7 +156,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
         ax.scatter(alpha, yi, s=85, color=color, edgecolor=CARD, linewidth=2, zorder=3)
         right = alpha >= 0
         ax.text(alpha + (0.03 if right else -0.03) * span, yi, f"{alpha:.2f}",
-                va="center", ha="left" if right else "right", fontsize=11, color=INK,
+                va="center", ha="left" if right else "right", fontsize=12, color=INK,
                 zorder=4, bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))
 
 
@@ -178,15 +181,12 @@ def save_lp_chart(table: pd.DataFrame, data, comparisons, csv_path: Path) -> Pat
         _panel(fig, x, y, table[table["comparison"] == name], data, name,
                coders_of.get(name, []), x_min)
 
-    fig.text(0.5, 1 - 0.36 / fig_h, "Krippendorff's alpha per component", ha="center",
+    fig.text(0.5, 1 - 0.36 / fig_h, "Krippendorff's alpha (nominal) per component", ha="center",
              va="center", fontsize=19, fontweight="semibold", color=INK)
-    fig.text(0.5, 1 - 0.7 / fig_h, "nominal, 3 flags (Clear / Ambiguous / Not specified)   ·   "
-             "dashed lines: 0.667 tentative, 0.800 reliable", ha="center", va="center",
+    fig.text(0.5, 1 - 0.7 / fig_h, "3 Flags [Clear / Ambiguous / Not specified]", ha="center", va="center",
              fontsize=12.5, color=INK_2)
     handles = [Line2D([], [], marker="o", linestyle="", markersize=9, markerfacecolor=color,
                       markeredgecolor=color, label=label) for color, label in STATUS.values()]
-    handles.append(Line2D([], [], color=GOOD, linewidth=2.6, linestyle=DOTTED,
-                          dash_capstyle="round", label=PERFECT_LABEL))
     fig.legend(handles=handles, loc="center", bbox_to_anchor=(0.5, (BOTTOM / 2) / fig_h),
                ncol=4 if cols == 2 else 2, frameon=False, fontsize=11.5, labelcolor=INK_2,
                columnspacing=2.0, handlelength=2.2)

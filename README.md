@@ -8,7 +8,7 @@ The seven components: _threat source, objective or harmful outcome, capability, 
 
 ## What Krippendorff's alpha measures
 
-Two coders can agree simply by chance, especially when one flag dominates. Alpha removes that chance agreement:    
+Two coders can agree simply by chance, especially when one flag dominates. Alpha removes that chance agreement:
 
 $α = 1 − Dₒ / Dₑ$
 
