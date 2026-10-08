@@ -1,9 +1,9 @@
 """Krippendorff's alpha computed with the `krippendorff` library (fast-krippendorff).
 
 Run from the project root:
-    uv run python -m krippendorff_python_lib.alpha_lib                      # all comparisons
-    uv run python -m krippendorff_python_lib.alpha_lib --only humans        # just one
-    uv run python -m krippendorff_python_lib.alpha_lib --only humans adya_vs_llm
+    uv run python -m krippendorff_python_lib.ka_script_lib                      # all comparisons
+    uv run python -m krippendorff_python_lib.ka_script_lib --only humans        # just one
+    uv run python -m krippendorff_python_lib.ka_script_lib --only humans adya_vs_llm
 """
 
 from __future__ import annotations

@@ -20,8 +20,8 @@ file = "materials/25_random_scenario_judgement_rujuta.xlsx"
 sheet = "Judgment1"
 
 # Each comparison computes alpha over the listed coders.
-# Run all:   uv run python -m krippendorff_python_lib.alpha_lib
-# Run only humans (mentees):  uv run python -m krippendorff_python_lib.alpha_lib --only humans
+# Run all:   uv run python -m krippendorff_python_lib.ka_script_lib
+# Run only humans (mentees):  uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 
 # MAIN RESULT: human vs human, i.e. is the codebook reliable?
 [[comparisons]]

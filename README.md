@@ -55,7 +55,7 @@ krippendorff-alpha/
 ├── config.toml                  # which sheets to compare
 ├── data_preprocessing.py               # shared: load, clean, match, encode, matrices
 ├── krippendorff_python_lib/
-│   └── alpha_lib.py             # α via the krippendorff package
+│   └── ka_script_lib.py             # α via the krippendorff package
 ├── custom_krippendorff/         # α from scratch (in progress)
 ├── tests/test_known_answers.py  # published + hand-computed test cases
 ├── materials/                   # coding sheets (not for public release)
@@ -71,16 +71,16 @@ uv sync
 uv run pytest -q   
 # known-answer tests (must pass)
 # Run all: 
-uv run python -m krippendorff_python_lib.alpha_lib
+uv run python -m krippendorff_python_lib.ka_script_lib
 # Run only humans (mentees): 
-uv run python -m krippendorff_python_lib.alpha_lib --only humans
+uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 ```
 
 ## Reading the output
 
 1. **DATA CHECK.** Flag counts per coder per component. Review these first: if they are wrong, every α after them is wrong.
 2. **α table.** Per component: number of scenarios, % agreement and α for both views, and the verdict against 0.667.
-3. **`outputs/alpha_lib.csv`**: the same table, with each coder's flag counts.
+3. **`outputs/ka_script_lib.csv`**: the same table, with each coder's flag counts.
 
 **Interpretation pitfalls:**
 

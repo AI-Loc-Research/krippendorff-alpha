@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from data_preprocessing import extract_flags, normalize_flag, percent_agreement
-from krippendorff_python_lib.alpha_lib import alpha_nominal
+from krippendorff_python_lib.ka_script_lib import alpha_nominal
 
 nan = np.nan
 
