@@ -27,7 +27,8 @@ COMPONENTS = [
     "target_or_asset_at_risk",
 ]
 
-# Numeric codes. The order (0 < 1 < 2) only matters for ordinal alpha; nominal ignores it.
+# Numeric codes. The order (0 < 1 < 2) only matters for ordinal alpha.
+# But here we use nominal alpha, so the order will not matter.
 FLAG_CODES = {"Not specified": 0, "Ambiguous": 1, "Clear": 2}
 
 # Accepted spellings after lowercasing and collapsing whitespace. Anything else is an error.

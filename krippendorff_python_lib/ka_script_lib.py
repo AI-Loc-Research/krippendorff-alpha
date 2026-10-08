@@ -28,8 +28,9 @@ from data_preprocessing import (
     percent_agreement,
     select_comparisons,
 )
+from helper_visualize import save_visualizations
 
-THRESHOLD = 0.667  # Krippendorff: below this, do not rely on the data
+THRESHOLD = 0.667  # lower bound for tentative conclusions
 TIMESTAMP = time.strftime("%Y%m%d_%H%M")
 
 def alpha_nominal(matrix: np.ndarray) -> float:
@@ -48,10 +49,14 @@ def alpha_nominal(matrix: np.ndarray) -> float:
 def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
     rows = []
     for comp in COMPONENTS:
-        row = {"comparison": comparison_name, "component": comp}
+        # Missing cells are the same in both views, so one n_units covers both.
+        row = {
+            "comparison": comparison_name,
+            "component": comp,
+            "n_units": pairable_units(data.matrix(comp, coders, "3flag")),
+        }
         for view in VIEWS:
             m = data.matrix(comp, coders, view)
-            row[f"n_units_{view}"] = pairable_units(m)
             row[f"pct_agree_{view}"] = percent_agreement(m)
             row[f"alpha_{view}"] = alpha_nominal(m)
         for coder in coders:
@@ -85,8 +90,8 @@ def main() -> None:
     parser.add_argument("--only", nargs="+", metavar="NAME",
                         help="run only these comparisons from config.toml (default: all)")
     parser.add_argument("--out", default=None,
-                        help="CSV path (default: result/result_TIMESTAMP.csv, or "
-                             "outputs/result_<names>_TIMESTAMP.csv with --only)")
+                        help="CSV path (default: results/lib_ka_result_all_TIMESTAMP.csv, or "
+                           "results/lib_ka_result_<names>_TIMESTAMP.csv with --only)")
     args = parser.parse_args()
 
     coders, comparisons, units_from = load_config(args.config)
@@ -109,6 +114,8 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
     print(f"\nSaved: {out}")
+    for path in save_visualizations(table, comparisons, out):
+        print(f"Saved: {path}")
 
 
 if __name__ == "__main__":
