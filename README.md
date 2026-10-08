@@ -26,37 +26,43 @@ $α = 1 − Dₒ / Dₑ$
 
 ## Why two implementations
 
-1. **`krippendorff_python_lib/`** uses the [`krippendorff`](https://github.com/pln-fing-udelar/fast-krippendorff) Python package (v0.9.0).
-2. **`custom_krippendorff/`** is our from-scratch implementation of the four steps in
+1. **`ka_script_lib.py`** uses the [`krippendorff`](https://github.com/pln-fing-udelar/fast-krippendorff) Python package (v0.9.0).
+2. **`ka_script_custom.py`** is our from-scratch implementation of the four steps in
    Krippendorff (2011): reliability data matrix → coincidence matrix → difference function → α. _[for cross check]_
 
 ## Project layout
 
 ```
 krippendorff-alpha/
-├── config.toml                  # which sheets to compare
-├── data_preprocessing.py               # shared: load, clean, match, encode, matrices
-├── krippendorff_python_lib/
-│   └── ka_script_lib.py             # α via the krippendorff package
-├── custom_krippendorff/         # α from scratch (in progress)
-├── tests/test_known_answers.py  # published + hand-computed test cases
-├── materials/                   # coding sheets (not for public release)
-└── outputs/                     # generated CSV reports
+├── config.toml              # coders: name, kind (human / llm), Excel file, sheet
+├── data_preprocessing.py    # shared: load, clean, match, encode, matrices, --human/--llm
+├── ka_script_lib.py         # alpha via the krippendorff package
+├── ka_script_custom.py      # alpha from scratch (Krippendorff 2011), checked against the library
+├── helper_visual_lp_chart.py           # lollipop chart (1 card for --human, 2 x 2 for --llm)
+├── helper_visual_comparison_table.py   # comparison tables: coders' raw labels side by side
+├── tests/                   # published + hand-computed test cases
+├── materials/               # coding sheets (not for public release)
+└── results/                 # generated CSV + PNG files
 ```
 
 ## Setup and run (uv)
 
 ```Shell
-uv sync  
+uv sync
+uv run pytest -q                        # tests must pass
 
-# Know test and labels must passed
-uv run pytest -q   
-# known-answer tests (must pass)
-# Run all: 
-uv run python -m krippendorff_python_lib.ka_script_lib
-# Run only humans (mentees): 
-uv run python -m krippendorff_python_lib.ka_script_lib --only humans
+# one flag is required; without it the script prints this usage guide
+uv run python ka_script_lib.py --human  # human coders (mentees) with each other
+uv run python ka_script_lib.py --llm    # the same, plus each human vs each LLM, plus all combined
+
+uv run python ka_script_custom.py --human   # same flags; also checks every alpha against the library
+uv run python ka_script_custom.py --llm
 ```
+
+Who counts as human or LLM is set by `kind` in `config.toml`. `--human` never loads an LLM sheet.
+`--llm` ends with a **Combined (llm+human)** comparison: one alpha per component over all coders
+together (same CSV, last rows). It shows overall consistency but not *who* disagrees, so read it
+with the pairwise results. Its label grid is green only where every coder agrees.
 
 ## Reading the output
 
@@ -64,10 +70,11 @@ uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 2. **α table.** Per component: number of scenarios, % agreement and α for both views, and the verdict against 0.667.
    `n/a` with verdict `no variation` is **not an error**: every coder gave the same flag to every scenario
    (e.g. all Clear), so D_o = D_e = 0 and α = 0/0. Agreement is 100%, but α has nothing to measure.
-   The reason is printed under the table and saved in the CSV `note` column.
-3. **`results/<lib|custom>_ka_result_<names>_<timestamp>.csv`**: the same table, with each coder's flag counts.
-4. **`results/<lib|custom>_ka_chart_<names>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
-   with the 0.667 / 0.800 thresholds and % agreement beside each row.
+   In the CSV, such an α is an empty cell.
+3. **`results/<lib|custom>_ka_result_<human|llm>_<timestamp>.csv`**: the same table, with each coder's flag counts.
+4. **`results/<lib|custom>_ka_chart_<human|llm>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
+   with the 0.667 / 0.800 thresholds and % agreement beside each row. One card for `--human`; a 2 x 2 grid of
+   cards for `--llm` (humans, each mentee vs the LLM, combined), all on the same α scale.
 5. **`results/<lib|custom>_ka_labels_<comparison>_<timestamp>.png`**: one per comparison. Each coder's raw labels
    (C / A / N) for the 25 scenarios x 7 components, side by side. Green = same flag from every coder;
    red with a bold, outlined letter = flags differ. The bottom row counts matching scenarios per component.
@@ -84,7 +91,6 @@ uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 | `alpha_binary`        | α on present vs absent, the paper's own definition of "specified"                                                                                                                                                                                                             | `0.512`                              |
 | `flags_mentee_adya`   | How many times you used each flag for this component:**C**lear, **A**mbiguous, **N**ot specified. Adds `missing=…` if you left cells empty                                                                                                                | `C=17 A=4 N=4`                       |
 | `flags_mentee_rujuta` | The same counts for Rujuta                                                                                                                                                                                                                                                     | `C=22 A=0 N=3`                       |
-| `note`                | Why α is `n/a` for this component, if it is (empty otherwise) | `3flag: alpha n/a, every coder gave 'Clear' to every scenario (no variation); ...` |
 
 - [X] Shared data pipeline and library implementation
 - [X] From-scratch implementation + cross-check
@@ -163,7 +169,7 @@ flowchart TD
     I --> J2[9b. α via custom from-scratch code]
     J1 --> K[10. CROSS-CHECK<br/>library α == custom α ?]
     J2 --> K
-    K --> L[11. REPORT<br/>per component: % agree, prevalence,<br/>α 3-flag, α binary, pass ≥ 0.667<br/>→ console + outputs/*.csv]
+    K --> L[11. REPORT<br/>per component: % agree, prevalence,<br/>α 3-flag, α binary, pass ≥ 0.667<br/>→ console + results/*.csv + PNGs]
     T[tests: 9 known-answer cases] -.must pass.-> J1
     T -.must pass.-> J2
 ```

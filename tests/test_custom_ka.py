@@ -1,4 +1,4 @@
-"""Tests for the from-scratch implementation (custom_krippendorff).
+"""Tests for the from-scratch implementation (ka_script_custom.py).
 
 1. Each computational step reproduces the intermediate numbers printed in
    Krippendorff (2011), "Computing Krippendorff's Alpha-Reliability".
@@ -11,7 +11,7 @@ import krippendorff
 import numpy as np
 import pytest
 
-from custom_krippendorff.ka_script_custom import (
+from ka_script_custom import (
     alpha_details,
     alpha_nominal,
     coincidence_matrix,

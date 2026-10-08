@@ -9,7 +9,9 @@ Pipeline: load config -> load sheets -> find flag columns -> select scenario row
 
 from __future__ import annotations
 
+import argparse
 import re
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,11 +50,15 @@ VIEWS = ("3flag", "binary")
 SCENARIO_ID = re.compile(r"^S\d+$")
 
 # config
+KINDS = ("human", "llm")
+
+
 @dataclass
 class CoderSource:
     name: str
     file: Path
     sheet: str | int = 0
+    kind: str = "human"  # "human" (a mentee) or "llm"
 
 @dataclass
 class Comparison:
@@ -60,19 +66,22 @@ class Comparison:
     coders: list[str]
 
 
-def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], str]:
+def load_config(path: str | Path) -> tuple[list[CoderSource], str]:
     """Read config.toml. Relative file paths are resolved against the config's folder.
-    Returns (coders, comparisons, units_from). `units_from` names the coder whose
-    scenarios define the units; every other coder must contain those scenarios.
+    Returns (coders, units_from). `units_from` names the human coder whose scenarios
+    define the units; every other coder must contain those scenarios.
     """
     path = Path(path)
     with open(path, "rb") as f:
         cfg = tomllib.load(f)
 
-    coders = [
-        CoderSource(c["name"], (path.parent / c["file"]).resolve(), c.get("sheet", 0))
-        for c in cfg["coders"]
-    ]
+    coders = []
+    for c in cfg["coders"]:
+        kind = c.get("kind")
+        if kind not in KINDS:
+            raise ValueError(f'{path}: coder {c.get("name")!r} needs  kind = "human"  or  kind = "llm"')
+        coders.append(CoderSource(c["name"], (path.parent / c["file"]).resolve(),
+                                  c.get("sheet", 0), kind))
     names = [c.name for c in coders]
     if len(set(names)) != len(names):
         raise ValueError(f"Duplicate coder names in {path}: {names}")
@@ -83,15 +92,9 @@ def load_config(path: str | Path) -> tuple[list[CoderSource], list[Comparison], 
             f'{path}: add  units_from = "<coder name>"  at the top of the file ' "(before any [[coders]] block)")
     if units_from not in names:
         raise ValueError(f"units_from = {units_from!r} is not one of the coders {names}")
-
-    comparisons = [Comparison(c["name"], list(c["coders"])) for c in cfg["comparisons"]]
-    for comp in comparisons:
-        unknown = [n for n in comp.coders if n not in names]
-        if unknown:
-            raise ValueError(f"Comparison '{comp.name}' uses unknown coder(s): {unknown}")
-        if len(comp.coders) < 2:
-            raise ValueError(f"Comparison '{comp.name}' needs at least 2 coders")
-    return coders, comparisons, units_from
+    if next(c.kind for c in coders if c.name == units_from) != "human":
+        raise ValueError(f"units_from = {units_from!r} must be a human coder (the sampled scenarios)")
+    return coders, units_from
 
 # Cleaning helpers
 def clean_text(value) -> str:
@@ -257,28 +260,6 @@ def constant_flag(matrix: np.ndarray, view: str) -> str | None:
     return "specified" if values[0] == 1 else "not specified"
 
 
-def undefined_reason(matrix: np.ndarray, view: str) -> str:
-    """Why alpha cannot be computed for this matrix; '' when it can.
-
-    Alpha = 1 - D_o / D_e. When every coder gives the same flag everywhere, there is
-    no variation: D_o = 0 and D_e = 0, so alpha is 0/0. Agreement is then 100%, but
-    alpha has nothing to measure. This is a property of the data, not an error.
-    """
-    if pairable_units(matrix) == 0:
-        return "no scenario was coded by two or more coders"
-    flag = constant_flag(matrix, view)
-    return f"every coder gave '{flag}' to every scenario (no variation)" if flag else ""
-
-
-def alpha_note(data: CodingData, coders: list[str], component: str) -> str:
-    """Explanation for the CSV `note` column, covering both views ('' if alpha exists)."""
-    notes = []
-    for view in VIEWS:
-        reason = undefined_reason(data.matrix(component, coders, view), view)
-        if reason:
-            notes.append(f"{view}: alpha n/a, {reason}")
-    return "; ".join(notes)
-
 def flag_counts(data: CodingData, coder: str, component: str) -> str:
     """e.g. 'C=15 A=4 N=6' (and 'missing=1' if any)."""
     col = data.flags[coder][component]
@@ -303,17 +284,49 @@ def data_check_report(data: CodingData) -> str:
     return "\n".join(lines)
 
 
-# choose what cases what to run
+# choose what to run: --human or --llm
 
-def select_comparisons(comparisons: list[Comparison], only: list[str] | None) -> list[Comparison]:
-    """Keep the comparisons named in `only` (in that order); all of them if `only` is None."""
-    if not only:
+def parse_mode(prog: str, engine: str) -> str:
+    """Read the one required flag (--human or --llm). With no flag, print the usage
+    guide and exit; argparse itself rejects both flags together or unknown flags."""
+    parser = argparse.ArgumentParser(
+        prog=prog,
+        description=f"Krippendorff's alpha for the threat-model coding, computed with {engine}.",
+        epilog=f"examples:\n  uv run python {prog} --human\n  uv run python {prog} --llm\n\n"
+               "Coders and their kind (human / llm) are listed in config.toml.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    flags = parser.add_mutually_exclusive_group(required=True)
+    flags.add_argument("--human", action="store_true",
+                       help="compare the human coders (mentees) with each other")
+    flags.add_argument("--llm", action="store_true",
+                       help="as --human, plus each human vs each LLM, plus all coders combined")
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(2)
+    args = parser.parse_args()
+    return "llm" if args.llm else "human"
+
+
+COMBINED = "Combined (llm+human)"
+
+
+def build_comparisons(coders: list[CoderSource], mode: str) -> list[Comparison]:
+    """--human: all human coders together.
+    --llm: that, plus every human vs every LLM, plus (last) all coders together in one alpha."""
+    humans = [c.name for c in coders if c.kind == "human"]
+    llms = [c.name for c in coders if c.kind == "llm"]
+    comparisons = [Comparison("humans", humans)] if len(humans) >= 2 else []
+    if mode == "human":
+        if not comparisons:
+            raise ValueError("--human needs at least 2 coders with kind = \"human\" in config.toml")
         return comparisons
-    by_name = {c.name: c for c in comparisons}
-    unknown = [n for n in only if n not in by_name]
-    if unknown:
-        raise ValueError(f"Unknown comparison(s) {unknown}. Available: {list(by_name)}")
-    return [by_name[n] for n in only]
+    if not humans or not llms:
+        raise ValueError("--llm needs at least 1 human and 1 coder with kind = \"llm\" in config.toml")
+    comparisons += [Comparison(f"{h}_vs_{m}", [h, m]) for m in llms for h in humans]
+    if len(humans) + len(llms) >= 3:  # with 1 human + 1 LLM it would repeat the pair above
+        comparisons.append(Comparison(COMBINED, humans + llms))
+    return comparisons
 
 
 def coders_needed(

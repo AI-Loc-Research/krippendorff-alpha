@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from data_preprocessing import extract_flags, normalize_flag, percent_agreement
-from krippendorff_python_lib.ka_script_lib import alpha_nominal
+from ka_script_lib import alpha_nominal
 
 nan = np.nan
 
@@ -107,41 +107,74 @@ def test_units_from_ignores_coder_order(tmp_path):
     _write_sheet(tmp_path / "small.xlsx", [("p2", "S1"), ("p1", "S1")])               # like a mentee
     (tmp_path / "config.toml").write_text(
         'units_from = "mentee"\n'
-        '[[coders]]\nname = "llm"\nfile = "big.xlsx"\n'       # listed FIRST on purpose
-        '[[coders]]\nname = "mentee"\nfile = "small.xlsx"\n'
-        '[[comparisons]]\nname = "x"\ncoders = ["mentee", "llm"]\n'
+        '[[coders]]\nname = "llm"\nkind = "llm"\nfile = "big.xlsx"\n'      # listed FIRST on purpose
+        '[[coders]]\nname = "mentee"\nkind = "human"\nfile = "small.xlsx"\n'
     )
-    coders, _, units_from = load_config(tmp_path / "config.toml")
+    coders, units_from = load_config(tmp_path / "config.toml")
     data = load_coding_data(coders, units_from)
     assert data.units == ["p2/S1", "p1/S1"]
     assert data.extra_rows_ignored == {"llm": 1, "mentee": 0}
 
 
-def test_missing_units_from_is_an_error(tmp_path):
+def test_config_errors(tmp_path):
     from data_preprocessing import load_config
 
-    (tmp_path / "config.toml").write_text(
-        '[[coders]]\nname = "a"\nfile = "a.xlsx"\n'
-        '[[coders]]\nname = "b"\nfile = "b.xlsx"\n'
-        '[[comparisons]]\nname = "x"\ncoders = ["a", "b"]\n'
-    )
-    with pytest.raises(ValueError, match="units_from"):
-        load_config(tmp_path / "config.toml")
+    cases = {
+        "units_from": '[[coders]]\nname = "a"\nkind = "human"\nfile = "a.xlsx"\n',
+        "kind": 'units_from = "a"\n[[coders]]\nname = "a"\nfile = "a.xlsx"\n',
+        "must be a human": 'units_from = "m"\n[[coders]]\nname = "m"\nkind = "llm"\nfile = "m.xlsx"\n',
+    }
+    for message, text in cases.items():
+        (tmp_path / "config.toml").write_text(text)
+        with pytest.raises(ValueError, match=message):
+            load_config(tmp_path / "config.toml")
 
 
+# --- Choosing what to run: --human / --llm ---------------------------------------------
 
-# Choosing comparisons (--only) 
+def _coders():
+    from data_preprocessing import CoderSource
+    return [CoderSource("llm", "x", kind="llm"), CoderSource("adya", "y"), CoderSource("rujuta", "z")]
 
-def test_select_comparisons_and_needed_coders():
-    from data_preprocessing import CoderSource, Comparison, coders_needed, select_comparisons
 
-    comps = [Comparison("humans", ["adya", "rujuta"]),
-             Comparison("adya_vs_llm", ["adya", "llm"])]
-    assert select_comparisons(comps, None) == comps
-    assert [c.name for c in select_comparisons(comps, ["humans"])] == ["humans"]
-    with pytest.raises(ValueError, match="Available"):
-        select_comparisons(comps, ["typo"])
+def test_build_comparisons():
+    from data_preprocessing import build_comparisons
 
-    coders = [CoderSource("llm", "x"), CoderSource("adya", "y"), CoderSource("rujuta", "z")]
-    needed = coders_needed(coders, select_comparisons(comps, ["humans"]), "adya")
-    assert [c.name for c in needed] == ["adya", "rujuta"]   # LLM not loaded
+    human = build_comparisons(_coders(), "human")
+    assert [(c.name, c.coders) for c in human] == [("humans", ["adya", "rujuta"])]
+    llm = build_comparisons(_coders(), "llm")
+    assert [(c.name, c.coders) for c in llm] == [("humans", ["adya", "rujuta"]),
+                                                  ("adya_vs_llm", ["adya", "llm"]),
+                                                  ("rujuta_vs_llm", ["rujuta", "llm"]),
+                                                  ("Combined (llm+human)", ["adya", "rujuta", "llm"])]
+    # 1 human + 1 LLM: the combined group would just repeat the pair, so it is left out
+    assert [c.name for c in build_comparisons(_coders()[:2], "llm")] == ["adya_vs_llm"]
+    with pytest.raises(ValueError, match="--human needs at least 2"):
+        build_comparisons(_coders()[:2], "human")
+
+
+def test_human_mode_never_loads_the_llm_sheet():
+    from data_preprocessing import build_comparisons, coders_needed
+
+    needed = coders_needed(_coders(), build_comparisons(_coders(), "human"), "adya")
+    assert [c.name for c in needed] == ["adya", "rujuta"]
+
+
+@pytest.mark.parametrize("argv, expected", [(["--human"], "human"), (["--llm"], "llm")])
+def test_parse_mode(monkeypatch, argv, expected):
+    from data_preprocessing import parse_mode
+
+    monkeypatch.setattr("sys.argv", ["ka_script_lib.py", *argv])
+    assert parse_mode("ka_script_lib.py", "x") == expected
+
+
+@pytest.mark.parametrize("argv", [[], ["--human", "--llm"], ["--only", "humans"]])
+def test_parse_mode_rejects_bad_usage(monkeypatch, capsys, argv):
+    from data_preprocessing import parse_mode
+
+    monkeypatch.setattr("sys.argv", ["ka_script_lib.py", *argv])
+    with pytest.raises(SystemExit) as exit_info:
+        parse_mode("ka_script_lib.py", "x")
+    assert exit_info.value.code == 2
+    printed = capsys.readouterr()
+    assert "usage: ka_script_lib.py" in printed.out + printed.err

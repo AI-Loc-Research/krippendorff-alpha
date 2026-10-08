@@ -1,8 +1,0 @@
-comparison,component,n_units,pct_agree_3flag,alpha_3flag,pct_agree_binary,alpha_binary,flags_mentee_adya,flags_mentee_rujuta,note
-humans,threat_source,25,1.0,,1.0,,C=25 A=0 N=0,C=25 A=0 N=0,"3flag: alpha n/a, every coder gave 'Clear' to every scenario (no variation); binary: alpha n/a, every coder gave 'specified' to every scenario (no variation)"
-humans,objective_or_harmful_outcome,25,0.84,0.5388235294117647,0.88,0.3466666666666667,C=19 A=2 N=4,C=21 A=3 N=1,
-humans,capability,25,0.88,0.5116279069767442,0.88,0.5116279069767442,C=23 A=0 N=2,C=20 A=0 N=5,
-humans,knowledge,25,0.4,-0.04850213980028539,0.52,0.045454545454545414,C=14 A=2 N=9,C=3 A=3 N=19,
-humans,access,25,0.68,0.4471086036671368,0.72,0.4367816091954023,C=13 A=3 N=9,C=12 A=1 N=12,
-humans,constraints_or_enabling_conditions,25,0.72,0.24945295404814005,0.88,0.5116279069767442,C=17 A=4 N=4,C=22 A=0 N=3,
-humans,target_or_asset_at_risk,25,0.68,0.1422319474835887,0.8,0.18604651162790697,C=18 A=2 N=5,C=21 A=2 N=2,

@@ -1,16 +1,10 @@
-"""Tests for helper_visualize and the "n/a" explanations in data_preprocessing."""
+"""Tests for the two figure modules and constant_flag (the "n/a" label in the chart)."""
 
 import pandas as pd
 
-from data_preprocessing import (
-    COMPONENTS,
-    CodingData,
-    Comparison,
-    alpha_note,
-    constant_flag,
-    undefined_reason,
-)
-from helper_visualize import save_visualizations, status_of
+from data_preprocessing import COMPONENTS, CodingData, Comparison, constant_flag
+from helper_visual_comparison_table import save_comparison_tables, table_path
+from helper_visual_lp_chart import chart_path, save_lp_chart, status_of
 
 PNG = b"\x89PNG\r\n\x1a\n"
 
@@ -25,11 +19,11 @@ def _data():
     return CodingData("a", units, {"a": a, "b": b}, {"a": [], "b": []}, {"a": 0, "b": 0})
 
 
-def _table():
-    rows = [{"comparison": "humans", "component": comp, "n_units": 3,
+def _table(name="humans"):
+    rows = [{"comparison": name, "component": comp, "n_units": 3,
              "pct_agree_3flag": 1.0, "alpha_3flag": float("nan"),
              "pct_agree_binary": 1.0, "alpha_binary": float("nan"),
-             "flags_a": "C=3 A=0 N=0", "flags_b": "C=3 A=0 N=0", "note": ""}
+             "flags_a": "C=3 A=0 N=0", "flags_b": "C=3 A=0 N=0"}
             for comp in COMPONENTS]
     table = pd.DataFrame(rows)
     table.loc[table.component == "knowledge", "alpha_3flag"] = -0.2
@@ -45,44 +39,36 @@ def test_status_bands():
     assert status_of(-0.2) == "below"
 
 
-def test_why_alpha_is_na():
+def test_constant_flag():
     data = _data()
-    same = data.matrix("threat_source", ["a", "b"], "3flag")
-    assert constant_flag(same, "3flag") == "Clear"
-    assert "every coder gave 'Clear'" in undefined_reason(same, "3flag")
-    varies = data.matrix("knowledge", ["a", "b"], "3flag")
-    assert constant_flag(varies, "3flag") is None and undefined_reason(varies, "3flag") == ""
-
-
-def test_alpha_note_covers_each_view():
-    data = _data()
-    both = alpha_note(data, ["a", "b"], "threat_source")
-    assert "3flag: alpha n/a" in both and "binary: alpha n/a" in both
+    assert constant_flag(data.matrix("threat_source", ["a", "b"], "3flag"), "3flag") == "Clear"
+    assert constant_flag(data.matrix("knowledge", ["a", "b"], "3flag"), "3flag") is None
     # access: Clear vs Ambiguous varies in 3 flags, but both are "specified" in binary
-    only_binary = alpha_note(data, ["a", "b"], "access")
-    assert only_binary.startswith("binary:") and "'specified'" in only_binary
-    assert alpha_note(data, ["a", "b"], "knowledge") == ""
+    assert constant_flag(data.matrix("access", ["a", "b"], "3flag"), "3flag") is None
+    assert constant_flag(data.matrix("access", ["a", "b"], "binary"), "binary") == "specified"
 
 
-def test_files_named_after_csv(tmp_path):
-    csv = tmp_path / "results" / "lib_ka_result_humans_20261008_1500.csv"
-    paths = save_visualizations(_table(), _data(), [Comparison("humans", ["a", "b"])], csv)
-    assert [p.name for p in paths] == ["lib_ka_chart_humans_20261008_1500.png",
-                                       "lib_ka_labels_humans_20261008_1500.png"]
+def test_file_names():
+    csv = "results/lib_ka_result_llm_20261008_1500.csv"
+    assert chart_path(csv).name == "lib_ka_chart_llm_20261008_1500.png"
+    assert table_path(csv, "humans").name == "lib_ka_labels_humans_20261008_1500.png"
+    assert (table_path(csv, "Combined (llm+human)").name
+            == "lib_ka_labels_combined_llm_human_20261008_1500.png")
+    assert chart_path("my_run.csv").name == "my_run_chart.png"
+
+
+def test_one_chart_with_a_card_per_comparison(tmp_path):
+    names = ["humans", "a_vs_llm", "b_vs_llm", "Combined (llm+human)"]   # --llm: 2 x 2 grid
+    table = pd.concat([_table(n) for n in names], ignore_index=True)
+    comparisons = [Comparison(n, ["a", "b"]) for n in names]
+    path = save_lp_chart(table, _data(), comparisons, tmp_path / "lib_ka_result_llm_20261008_1500.csv")
+    assert path.read_bytes()[:8] == PNG
+
+
+def test_one_comparison_table_per_comparison(tmp_path):
+    comparisons = [Comparison("humans", ["a", "b"]), Comparison("Combined (llm+human)", ["a", "b"])]
+    paths = save_comparison_tables(_data(), comparisons,
+                                   tmp_path / "custom_ka_result_llm_20261008_1500.csv")
+    assert [p.name for p in paths] == ["custom_ka_labels_humans_20261008_1500.png",
+                                       "custom_ka_labels_combined_llm_human_20261008_1500.png"]
     assert all(p.read_bytes()[:8] == PNG for p in paths)
-
-
-def test_one_label_grid_per_comparison(tmp_path):
-    table = pd.concat([_table(), _table().assign(comparison="other")], ignore_index=True)
-    comparisons = [Comparison("humans", ["a", "b"]), Comparison("other", ["b", "a"])]
-    csv = tmp_path / "custom_ka_result_all_20261008_1500.csv"
-    paths = save_visualizations(table, _data(), comparisons, csv)
-    assert [p.name for p in paths] == ["custom_ka_chart_all_20261008_1500.png",
-                                       "custom_ka_labels_humans_20261008_1500.png",
-                                       "custom_ka_labels_other_20261008_1500.png"]
-
-
-def test_custom_out_name(tmp_path):
-    paths = save_visualizations(_table(), _data(), [Comparison("humans", ["a", "b"])],
-                                tmp_path / "my_run.csv")
-    assert [p.name for p in paths] == ["my_run_chart.png", "my_run_labels_humans.png"]

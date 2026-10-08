@@ -6,15 +6,16 @@
     3. difference function       delta^2(c, k): nominal, ordinal, interval or ratio
     4. alpha                     1 - D_o / D_e
 
-Run from the project root:
-    uv run python -m custom_krippendorff.ka_script_custom                 # all comparisons
-    uv run python -m custom_krippendorff.ka_script_custom --only humans   # just one
-    uv run python -m custom_krippendorff.ka_script_custom --crosscheck    # compare with the library
+Run from the project root (one flag is required):
+    uv run python ka_script_custom.py --human    # human coders (mentees) with each other
+    uv run python ka_script_custom.py --llm      # the same, plus each human vs each LLM,
+                                                 # plus all coders combined (last rows)
+
+Every run also checks each alpha against the `krippendorff` library (one line: MATCH).
 """
 
 from __future__ import annotations
 
-import argparse
 import time
 from pathlib import Path
 
@@ -23,19 +24,23 @@ import pandas as pd
 
 from data_preprocessing import (
     COMPONENTS,
-    alpha_note,
     VIEWS,
+    build_comparisons,
     coders_needed,
     data_check_report,
     flag_counts,
     load_coding_data,
     load_config,
     pairable_units,
+    parse_mode,
     percent_agreement,
-    select_comparisons,
 )
-from helper_visualize import save_visualizations
+from helper_visual_comparison_table import save_comparison_tables
+from helper_visual_lp_chart import save_lp_chart
 
+PROJECT = Path(__file__).resolve().parent
+CONFIG = PROJECT / "config.toml"
+RESULTS = PROJECT / "results"
 THRESHOLD = 0.667  # lower bound for tentative conclusions
 TIMESTAMP = time.strftime("%Y%m%d_%H%M")
 LEVELS = ("nominal", "ordinal", "interval", "ratio")
@@ -130,13 +135,12 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
             row[f"alpha_{view}"] = details["alpha"]
         for coder in coders:
             row[f"flags_{coder}"] = flag_counts(data, coder, comp)
-        row["note"] = alpha_note(data, coders, comp)  # why alpha is n/a, if it is
         rows.append(row)
     return pd.DataFrame(rows)
 
 
 def verdict(alpha: float, n_units: int = 1) -> str:
-    if np.isnan(alpha):  # not an error: see undefined_reason() in data_preprocessing
+    if np.isnan(alpha):  # not an error: every coder gave the same flag, so alpha = 0/0
         return "no variation" if n_units > 0 else "no data"
     return "PASS" if alpha >= THRESHOLD else "below 0.667"
 
@@ -161,19 +165,11 @@ def print_table(df: pd.DataFrame, comparisons) -> None:
                              f"{r[f'D_e_{view}']:>6.3f} {alpha_text(r[f'alpha_{view}']):>7} "
                              f"{verdict(r[f'alpha_{view}'], r.n_units):12}")
             print(f"{r.component:36} | {cells[0]} | {cells[1]}")
-        notes = block[block["note"] != ""]
-        if len(notes):
-            print("\n  n/a = alpha cannot be computed (not an error): every coder gave the same flag to every")
-            print("        scenario, so D_o = D_e = 0 and alpha = 0/0; agreement is 100%.")
-            for _, r in notes.iterrows():
-                print(f"        {r.component}")
-                for part in r.note.split("; "):
-                    print(f"          {part}")
 
 
 def crosscheck(data, comparisons) -> None:
-    """Compare every alpha with the `krippendorff` library (optional, --crosscheck)."""
-    from krippendorff_python_lib.ka_script_lib import alpha_nominal as library_alpha
+    """Compare every alpha with the `krippendorff` library (runs on every call)."""
+    from ka_script_lib import alpha_nominal as library_alpha
 
     worst, count = 0.0, 0
     for c in comparisons:
@@ -191,19 +187,9 @@ def crosscheck(data, comparisons) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--config", default="config.toml")
-    parser.add_argument("--only", nargs="+", metavar="NAME",
-                        help="run only these comparisons from config.toml (default: all)")
-    parser.add_argument("--crosscheck", action="store_true",
-                        help="also compute every alpha with the krippendorff library and compare")
-    parser.add_argument("--out", default=None,
-                        help="CSV path (default: results/custom_ka_result_all_TIMESTAMP.csv, or "
-                             "results/custom_ka_result_<names>_TIMESTAMP.csv with --only)")
-    args = parser.parse_args()
-
-    coders, comparisons, units_from = load_config(args.config)
-    comparisons = select_comparisons(comparisons, args.only)
+    mode = parse_mode("ka_script_custom.py", "our from-scratch implementation")
+    coders, units_from = load_config(CONFIG)
+    comparisons = build_comparisons(coders, mode)
     data = load_coding_data(coders_needed(coders, comparisons, units_from), units_from)
 
     print(data_check_report(data))
@@ -212,21 +198,16 @@ def main() -> None:
         [alpha_table(data, c.name, c.coders) for c in comparisons], ignore_index=True
     )
     print_table(table, comparisons)
-    if args.crosscheck:
-        crosscheck(data, comparisons)
+    crosscheck(data, comparisons)
 
-    if args.out:
-        out = Path(args.out)
-    elif args.only:
-        out = Path(f"results/custom_ka_result_{'_'.join(args.only)}_{TIMESTAMP}.csv")
-    else:
-        out = Path(f"results/custom_ka_result_all_{TIMESTAMP}.csv")
+    out = RESULTS / f"custom_ka_result_{mode}_{TIMESTAMP}.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
-    print(f"\nSaved: {out}")
-    for path in save_visualizations(table, data, comparisons, out):
-        print(f"Saved: {path}")
-
+    print(f"\nSaved: {out.relative_to(PROJECT)}")
+    saved = [save_lp_chart(table, data, comparisons, out),
+             *save_comparison_tables(data, comparisons, out)]
+    for path in saved:
+        print(f"Saved: {path.relative_to(PROJECT)}")
 
 
 if __name__ == "__main__":

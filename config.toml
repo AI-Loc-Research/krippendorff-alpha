@@ -1,42 +1,28 @@
-# Which coding sheets to compare.
+# Which coding sheets to compare. Paths are relative to this file.
+#
+#   uv run python ka_script_lib.py --human   compares all coders with kind = "human"
+#   uv run python ka_script_lib.py --llm     the same, plus each human vs each kind = "llm",
+#                                            plus all coders combined in one alpha
+#   (ka_script_custom.py takes the same flags)
 
-# The coder whose scenarios define the units (the 25 sampled scenarios).
+# The human coder whose scenarios define the units (the 25 sampled scenarios).
 # Must stay ABOVE the first [[coders]] block.
 units_from = "mentee_adya"
 
 [[coders]]
-name = "llm_kimi"
-file = "materials/scenario_final_resolved_llm_kimi.xlsx"
-sheet = "Sheet1"
-
-[[coders]]
 name = "mentee_adya"
+kind = "human"
 file = "materials/25_random_scenario_judgement_adya.xlsx"
 sheet = "Judgment1"
 
 [[coders]]
 name = "mentee_rujuta"
+kind = "human"
 file = "materials/25_random_scenario_judgement_rujuta.xlsx"
 sheet = "Judgment1"
 
-# Each comparison computes alpha over the listed coders.
-# Run all:   uv run python -m krippendorff_python_lib.ka_script_lib
-# Run only humans (mentees):  uv run python -m krippendorff_python_lib.ka_script_lib --only humans
-
-# MAIN RESULT: human vs human, i.e. is the codebook reliable?
-[[comparisons]]
-name = "humans"
-coders = ["mentee_adya", "mentee_rujuta"]
-
-[[comparisons]]
-name = "adya_vs_llm"
-coders = ["mentee_adya", "llm_kimi"]
-
-[[comparisons]]
-name = "rujuta_vs_llm"
-coders = ["mentee_rujuta", "llm_kimi"]
-
-# Optional: ONE alpha with all three coders together.
-# [[comparisons]]
-# name = "all_three"
-# coders = ["mentee_adya", "mentee_rujuta", "llm_kimi"]
+[[coders]]
+name = "llm_kimi"
+kind = "llm"
+file = "materials/scenario_final_resolved_llm_kimi.xlsx"
+sheet = "Sheet1"
