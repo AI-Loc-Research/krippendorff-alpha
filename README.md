@@ -62,7 +62,15 @@ uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 
 1. **DATA CHECK.** Flag counts per coder per component. Review these first: if they are wrong, every α after them is wrong.
 2. **α table.** Per component: number of scenarios, % agreement and α for both views, and the verdict against 0.667.
-3. **`outputs/ka_script_lib.csv`**: the same table, with each coder's flag counts.
+   `n/a` with verdict `no variation` is **not an error**: every coder gave the same flag to every scenario
+   (e.g. all Clear), so D_o = D_e = 0 and α = 0/0. Agreement is 100%, but α has nothing to measure.
+   The reason is printed under the table and saved in the CSV `note` column.
+3. **`results/<lib|custom>_ka_result_<names>_<timestamp>.csv`**: the same table, with each coder's flag counts.
+4. **`results/<lib|custom>_ka_chart_<names>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
+   with the 0.667 / 0.800 thresholds and % agreement beside each row.
+5. **`results/<lib|custom>_ka_labels_<comparison>_<timestamp>.png`**: one per comparison. Each coder's raw labels
+   (C / A / N) for the 25 scenarios x 7 components, side by side. Green = same flag from every coder;
+   red with a bold, outlined letter = flags differ. The bottom row counts matching scenarios per component.
 
 | Column                  | In simple words                                                                                                                                                                                                                                                                | Example (constraints row)              |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
@@ -76,11 +84,12 @@ uv run python -m krippendorff_python_lib.ka_script_lib --only humans
 | `alpha_binary`        | α on present vs absent, the paper's own definition of "specified"                                                                                                                                                                                                             | `0.512`                              |
 | `flags_mentee_adya`   | How many times you used each flag for this component:**C**lear, **A**mbiguous, **N**ot specified. Adds `missing=…` if you left cells empty                                                                                                                | `C=17 A=4 N=4`                       |
 | `flags_mentee_rujuta` | The same counts for Rujuta                                                                                                                                                                                                                                                     | `C=22 A=0 N=3`                       |
+| `note`                | Why α is `n/a` for this component, if it is (empty otherwise) | `3flag: alpha n/a, every coder gave 'Clear' to every scenario (no variation); ...` |
 
 - [X] Shared data pipeline and library implementation
-- [ ] From-scratch implementation + cross-check
+- [X] From-scratch implementation + cross-check
 - [ ] Bootstrap confidence intervals
-- [ ] Second human coder; human-vs-human α
+- [X] Second human coder; human-vs-human α
 - [ ] Consensus labels; LLM precision/recall vs consensus
 
 ## References

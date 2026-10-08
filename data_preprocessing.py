@@ -243,6 +243,42 @@ def percent_agreement(matrix: np.ndarray) -> float:
 def pairable_units(matrix: np.ndarray) -> int:
     return int(((~np.isnan(matrix)).sum(axis=0) >= 2).sum())
 
+
+# why alpha can be "n/a" (not an error)
+
+def constant_flag(matrix: np.ndarray, view: str) -> str | None:
+    """The one flag every coder gave in every comparable scenario, or None if flags vary."""
+    pairable = (~np.isnan(matrix)).sum(axis=0) >= 2
+    values = np.unique(matrix[:, pairable][~np.isnan(matrix[:, pairable])])
+    if len(values) != 1:
+        return None
+    if view == "3flag":
+        return {code: flag for flag, code in FLAG_CODES.items()}[int(values[0])]
+    return "specified" if values[0] == 1 else "not specified"
+
+
+def undefined_reason(matrix: np.ndarray, view: str) -> str:
+    """Why alpha cannot be computed for this matrix; '' when it can.
+
+    Alpha = 1 - D_o / D_e. When every coder gives the same flag everywhere, there is
+    no variation: D_o = 0 and D_e = 0, so alpha is 0/0. Agreement is then 100%, but
+    alpha has nothing to measure. This is a property of the data, not an error.
+    """
+    if pairable_units(matrix) == 0:
+        return "no scenario was coded by two or more coders"
+    flag = constant_flag(matrix, view)
+    return f"every coder gave '{flag}' to every scenario (no variation)" if flag else ""
+
+
+def alpha_note(data: CodingData, coders: list[str], component: str) -> str:
+    """Explanation for the CSV `note` column, covering both views ('' if alpha exists)."""
+    notes = []
+    for view in VIEWS:
+        reason = undefined_reason(data.matrix(component, coders, view), view)
+        if reason:
+            notes.append(f"{view}: alpha n/a, {reason}")
+    return "; ".join(notes)
+
 def flag_counts(data: CodingData, coder: str, component: str) -> str:
     """e.g. 'C=15 A=4 N=6' (and 'missing=1' if any)."""
     col = data.flags[coder][component]

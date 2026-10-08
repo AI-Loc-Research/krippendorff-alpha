@@ -18,6 +18,7 @@ import pandas as pd
 
 from data_preprocessing import (
     COMPONENTS,
+    alpha_note,
     VIEWS,
     coders_needed,
     data_check_report,
@@ -61,27 +62,42 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
             row[f"alpha_{view}"] = alpha_nominal(m)
         for coder in coders:
             row[f"flags_{coder}"] = flag_counts(data, coder, comp)
+        row["note"] = alpha_note(data, coders, comp)  # why alpha is n/a, if it is
         rows.append(row)
     return pd.DataFrame(rows)
 
 
-def verdict(alpha: float) -> str:
-    if np.isnan(alpha):
-        return "undefined"
+def verdict(alpha: float, n_units: int = 1) -> str:
+    if np.isnan(alpha):  # not an error: see undefined_reason() in data_preprocessing
+        return "no variation" if n_units > 0 else "no data"
     return "PASS" if alpha >= THRESHOLD else "below 0.667"
+
+
+def alpha_text(alpha: float) -> str:
+    return "n/a" if np.isnan(alpha) else f"{alpha:.3f}"
 
 
 def print_table(df: pd.DataFrame, comparisons) -> None:
     coders_of = {c.name: c.coders for c in comparisons}
     for name, block in df.groupby("comparison", sort=False):
         print(f"\n• {name} judgement; between: {' vs '.join(coders_of[name])} (THRESHOLD: {THRESHOLD})\n")
-        print(f"{'component':36} | {'%agree':>6} {'alpha':>7} {'':11} | "
-              f"{'%agree':>6} {'alpha':>7} {'':11}")
-        print(f"{'':36} |{'----- 3 flags -----':^26} | {'----- binary -----':^26}")
+        print(f"{'component':36} | {'%agree':>6} {'alpha':>7} {'':12} | "
+              f"{'%agree':>6} {'alpha':>7} {'':12}")
+        print(f"{'':36} |{'----- 3 flags -----':^27} | {'----- binary -----':^27}")
         for _, r in block.iterrows():
             print(f"{r.component:36} | "
-                  f"{r.pct_agree_3flag:>6.1%} {r.alpha_3flag:>7.3f} {verdict(r.alpha_3flag):11} | "
-                  f"{r.pct_agree_binary:>6.1%} {r.alpha_binary:>7.3f} {verdict(r.alpha_binary):11}")
+                  f"{r.pct_agree_3flag:>6.1%} {alpha_text(r.alpha_3flag):>7} "
+                  f"{verdict(r.alpha_3flag, r.n_units):12} | "
+                  f"{r.pct_agree_binary:>6.1%} {alpha_text(r.alpha_binary):>7} "
+                  f"{verdict(r.alpha_binary, r.n_units):12}")
+        notes = block[block["note"] != ""]
+        if len(notes):
+            print("\n  n/a = alpha cannot be computed (not an error): every coder gave the same flag to every")
+            print("        scenario, so there is no variation for alpha to measure; agreement is 100%.")
+            for _, r in notes.iterrows():
+                print(f"        {r.component}")
+                for part in r.note.split("; "):
+                    print(f"          {part}")
 
 
 def main() -> None:
@@ -114,7 +130,7 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
     print(f"\nSaved: {out}")
-    for path in save_visualizations(table, comparisons, out):
+    for path in save_visualizations(table, data, comparisons, out):
         print(f"Saved: {path}")
 
 

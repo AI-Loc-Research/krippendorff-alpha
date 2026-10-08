@@ -23,6 +23,7 @@ import pandas as pd
 
 from data_preprocessing import (
     COMPONENTS,
+    alpha_note,
     VIEWS,
     coders_needed,
     data_check_report,
@@ -129,14 +130,19 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
             row[f"alpha_{view}"] = details["alpha"]
         for coder in coders:
             row[f"flags_{coder}"] = flag_counts(data, coder, comp)
+        row["note"] = alpha_note(data, coders, comp)  # why alpha is n/a, if it is
         rows.append(row)
     return pd.DataFrame(rows)
 
 
-def verdict(alpha: float) -> str:
-    if np.isnan(alpha):
-        return "undefined"
+def verdict(alpha: float, n_units: int = 1) -> str:
+    if np.isnan(alpha):  # not an error: see undefined_reason() in data_preprocessing
+        return "no variation" if n_units > 0 else "no data"
     return "PASS" if alpha >= THRESHOLD else "below 0.667"
+
+
+def alpha_text(alpha: float) -> str:
+    return "n/a" if np.isnan(alpha) else f"{alpha:.3f}"
 
 
 def print_table(df: pd.DataFrame, comparisons) -> None:
@@ -144,17 +150,25 @@ def print_table(df: pd.DataFrame, comparisons) -> None:
     for name, block in df.groupby("comparison", sort=False):
         print(f"\n• {name} judgement; between: {' vs '.join(coders_of[name])} "
               f"(THRESHOLD: {THRESHOLD})  [alpha = 1 - D_o / D_e]\n")
-        head = f"{'%agree':>6} {'D_o':>6} {'D_e':>6} {'alpha':>7} {'':11}"
+        head = f"{'%agree':>6} {'D_o':>6} {'D_e':>6} {'alpha':>7} {'':12}"
         print(f"{'component':36} | {head} | {head}")
-        print(f"{'':36} |{'------------ 3 flags ------------':^40} |"
-              f"{'------------ binary ------------':^40}")
+        print(f"{'':36} |{'------------ 3 flags ------------':^41} |"
+              f"{'------------ binary ------------':^41}")
         for _, r in block.iterrows():
             cells = []
             for view in VIEWS:
                 cells.append(f"{r[f'pct_agree_{view}']:>6.1%} {r[f'D_o_{view}']:>6.3f} "
-                             f"{r[f'D_e_{view}']:>6.3f} {r[f'alpha_{view}']:>7.3f} "
-                             f"{verdict(r[f'alpha_{view}']):11}")
+                             f"{r[f'D_e_{view}']:>6.3f} {alpha_text(r[f'alpha_{view}']):>7} "
+                             f"{verdict(r[f'alpha_{view}'], r.n_units):12}")
             print(f"{r.component:36} | {cells[0]} | {cells[1]}")
+        notes = block[block["note"] != ""]
+        if len(notes):
+            print("\n  n/a = alpha cannot be computed (not an error): every coder gave the same flag to every")
+            print("        scenario, so D_o = D_e = 0 and alpha = 0/0; agreement is 100%.")
+            for _, r in notes.iterrows():
+                print(f"        {r.component}")
+                for part in r.note.split("; "):
+                    print(f"          {part}")
 
 
 def crosscheck(data, comparisons) -> None:
@@ -210,7 +224,7 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
     print(f"\nSaved: {out}")
-    for path in save_visualizations(table, comparisons, out):
+    for path in save_visualizations(table, data, comparisons, out):
         print(f"Saved: {path}")
 
 
