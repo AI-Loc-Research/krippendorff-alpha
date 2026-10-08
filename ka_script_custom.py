@@ -202,7 +202,7 @@ def main() -> None:
 
     out = RESULTS / f"custom_ka_result_{mode}_{TIMESTAMP}.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
-    table.to_csv(out, index=False)
+    table.round(4).to_csv(out, index=False)  # 4 decimals in the file; charts use full precision
     print(f"\nSaved: {out.relative_to(PROJECT)}")
     saved = [save_lp_chart(table, data, comparisons, out),
              *save_comparison_tables(data, comparisons, out)]
