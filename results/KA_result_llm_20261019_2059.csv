@@ -1,0 +1,29 @@
+comparison,component,n_units,pct_agree_3flag,alpha_3flag,pct_agree_binary,alpha_binary,flags_llm_kimi_2.5,flags_llm_deepseek_v4.1,flags_llm_glm_5.3
+llms,threat_source,193,0.9862,0.6314,0.9931,0.331,C=190 A=1 N=2,C=189 A=3 N=1,C=189 A=4 N=0
+llms,objective_or_harmful_outcome,193,0.9361,0.2641,0.9516,0.153,C=178 A=1 N=14,C=186 A=5 N=2,C=189 A=3 N=1
+llms,capability,193,0.8774,0.5164,0.9102,0.5377,C=160 A=0 N=33,C=170 A=7 N=16,C=166 A=13 N=14
+llms,knowledge,193,0.8808,0.6542,0.8998,0.6975,C=33 A=2 N=158,C=29 A=7 N=157,C=36 A=14 N=143
+llms,access,193,0.7375,0.5256,0.772,0.5437,C=65 A=2 N=126,C=82 A=8 N=103,C=90 A=28 N=75
+llms,constraints_or_enabling_conditions,193,0.867,0.4177,0.8826,0.4415,C=153 A=0 N=40,C=184 A=0 N=9,C=167 A=6 N=20
+llms,target_or_asset_at_risk,193,0.9257,0.5566,0.9275,0.5411,C=167 A=0 N=26,C=179 A=0 N=14,C=180 A=3 N=10
+llm_kimi_2.5_vs_llm_deepseek_v4.1,threat_source,193,0.9896,0.7111,0.9948,0.6649,C=190 A=1 N=2,C=189 A=3 N=1,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,objective_or_harmful_outcome,193,0.9171,0.2399,0.9275,0.0895,C=178 A=1 N=14,C=186 A=5 N=2,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,capability,193,0.8601,0.4478,0.8808,0.4638,C=160 A=0 N=33,C=170 A=7 N=16,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,knowledge,193,0.8964,0.6641,0.9119,0.7074,C=33 A=2 N=158,C=29 A=7 N=157,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,access,193,0.8031,0.6091,0.8187,0.6252,C=65 A=2 N=126,C=82 A=8 N=103,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,constraints_or_enabling_conditions,193,0.829,0.2306,0.829,0.2306,C=153 A=0 N=40,C=184 A=0 N=9,
+llm_kimi_2.5_vs_llm_deepseek_v4.1,target_or_asset_at_risk,193,0.9067,0.4993,0.9067,0.4993,C=167 A=0 N=26,C=179 A=0 N=14,
+llm_kimi_2.5_vs_llm_glm_5.3,threat_source,193,0.9845,0.5663,0.9896,-0.0026,C=190 A=1 N=2,,C=189 A=4 N=0
+llm_kimi_2.5_vs_llm_glm_5.3,objective_or_harmful_outcome,193,0.9275,0.2336,0.9326,0.1006,C=178 A=1 N=14,,C=189 A=3 N=1
+llm_kimi_2.5_vs_llm_glm_5.3,capability,193,0.8808,0.561,0.9016,0.5409,C=160 A=0 N=33,,C=166 A=13 N=14
+llm_kimi_2.5_vs_llm_glm_5.3,knowledge,193,0.8653,0.6249,0.8808,0.6539,C=33 A=2 N=158,,C=36 A=14 N=143
+llm_kimi_2.5_vs_llm_glm_5.3,access,193,0.6736,0.4202,0.715,0.4305,C=65 A=2 N=126,,C=90 A=28 N=75
+llm_kimi_2.5_vs_llm_glm_5.3,constraints_or_enabling_conditions,193,0.8705,0.5519,0.886,0.567,C=153 A=0 N=40,,C=167 A=6 N=20
+llm_kimi_2.5_vs_llm_glm_5.3,target_or_asset_at_risk,193,0.9119,0.5202,0.9171,0.5111,C=167 A=0 N=26,,C=180 A=3 N=10
+llm_deepseek_v4.1_vs_llm_glm_5.3,threat_source,193,0.9845,0.6189,0.9948,0.0,,C=189 A=3 N=1,C=189 A=4 N=0
+llm_deepseek_v4.1_vs_llm_glm_5.3,objective_or_harmful_outcome,193,0.9637,0.3504,0.9948,0.6649,,C=186 A=5 N=2,C=189 A=3 N=1
+llm_deepseek_v4.1_vs_llm_glm_5.3,capability,193,0.8912,0.5353,0.9482,0.6395,,C=170 A=7 N=16,C=166 A=13 N=14
+llm_deepseek_v4.1_vs_llm_glm_5.3,knowledge,193,0.8808,0.674,0.9067,0.7314,,C=29 A=7 N=157,C=36 A=14 N=143
+llm_deepseek_v4.1_vs_llm_glm_5.3,access,193,0.7358,0.5457,0.7824,0.5633,,C=82 A=8 N=103,C=90 A=28 N=75
+llm_deepseek_v4.1_vs_llm_glm_5.3,constraints_or_enabling_conditions,193,0.9016,0.4129,0.9326,0.5166,,C=184 A=0 N=9,C=167 A=6 N=20
+llm_deepseek_v4.1_vs_llm_glm_5.3,target_or_asset_at_risk,193,0.9585,0.6846,0.9585,0.6455,,C=179 A=0 N=14,C=180 A=3 N=10
