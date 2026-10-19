@@ -34,7 +34,7 @@ from helper_visual_lp_chart import save_lp_chart
 PROJECT = Path(__file__).resolve().parent
 CONFIG = PROJECT / "config.toml"
 RESULTS = PROJECT / "results"
-THRESHOLD = 0.667  # lower bound for tentative conclusions
+THRESHOLD = 0.780
 TIMESTAMP = time.strftime("%Y%m%d_%H%M")
 
 
@@ -73,7 +73,7 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
 def verdict(alpha: float, n_units: int = 1) -> str:
     if np.isnan(alpha):  # not an error: every coder gave the same flag, so alpha = 0/0
         return "no variation" if n_units > 0 else "no data"
-    return "PASS" if alpha >= THRESHOLD else "below 0.667"
+    return "PASS" if alpha >= THRESHOLD else "below 0.780"
 
 
 def alpha_text(alpha: float) -> str:

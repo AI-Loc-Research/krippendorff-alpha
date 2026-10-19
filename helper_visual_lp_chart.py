@@ -4,7 +4,7 @@ save_lp_chart(table, data, comparisons, csv_path) writes one PNG next to the CSV
     <prefix>_chart_<human|llm>_<time>.png
 --human gives one panel; --llm gives a 2 x 2 grid (humans, each human vs the LLM, combined).
 
-Colour never carries the verdict alone: each dot's position against the labelled 0.667 / 0.800
+Colour never carries the verdict alone: each dot's position against the labelled 0.780 / 0.900
 lines shows it too (red vs green is unreadable for many colour-blind readers). Raw % agreement
 is a different measure, so it is listed as text beside each row, never as an alpha value.
 
@@ -31,14 +31,14 @@ from matplotlib.patches import FancyBboxPatch  # noqa: E402
 
 from data_preprocessing import constant_flag  # noqa: E402
 
-TENTATIVE, RELIABLE = 0.667, 0.800
+TENTATIVE, RELIABLE = 0.780, 0.900
 
 # Status colours (fixed meaning)
-GOOD, WARNING, CRITICAL = "#0ca30c", "#fab219", "#d03b3b"
+GOOD, WARNING, CRITICAL = "#04a339", "#b6df02", "#c73636"
 STATUS = {
-    "reliable": (GOOD, "alpha >= 0.800  reliable"),
-    "tentative": (WARNING, "0.667 <= alpha < 0.800  tentative only"),
-    "below": (CRITICAL, "alpha < 0.667  do not rely on the data"),
+    "reliable": (GOOD, "alpha >= 0.900  reliable"),
+    "tentative": (WARNING, "0.780 <= alpha < 0.900  tentative only"),
+    "below": (CRITICAL, "alpha < 0.780  do not rely on the data"),
 }
 DOTTED = (0, (1, 2))
 INK, INK_2, MUTED = "#0b0b0b", "#4a4641", "#898781"
@@ -51,6 +51,7 @@ GAP = 0.2                            # space between cards
 TOP, BOTTOM = 0.85, 0.43            # page bands: title above, legend below
 SIDE = (TOP + BOTTOM) / 2.2            # equal side margins keep the image square
 INSET_LEFT, INSET_RIGHT, INSET_TOP, INSET_BOTTOM = 1.9, 0.9, 1.2, 0.85  # axes inside a card
+
 
 _INSTALLED = {f.name for f in font_manager.fontManager.ttflist}
 FONT = next((f for f in ("Segoe UI", "Helvetica Neue", "Arial") if f in _INSTALLED), "DejaVu Sans")
@@ -124,7 +125,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
     ax.set_xlabel("Krippendorff's alpha", fontsize=11.5, color=INK_2)
 
     ax.axvline(0, color=BASELINE, linewidth=1, zorder=1)
-    for threshold, label in ((TENTATIVE, "0.667"), (RELIABLE, "0.800")):
+    for threshold, label in ((TENTATIVE, "0.780"), (RELIABLE, "0.900")):
         ax.axvline(threshold, color=INK_2, linewidth=1, linestyle=(0, (4, 3)), zorder=1)
         ax.text(threshold, 1.015, label, transform=ax.get_xaxis_transform(),
                 ha="center", va="bottom", fontsize=11.5, color=INK_2)
