@@ -4,7 +4,14 @@ import pandas as pd
 
 from data_preprocessing import COMPONENTS, CodingData, Comparison, constant_flag
 from helper_visual_comparison_table import save_comparison_tables, table_path
-from helper_visual_lp_chart import chart_path, save_lp_chart, status_of
+from helper_visual_lp_chart import (
+    RELIABLE,
+    TENTATIVE,
+    chart_path,
+    save_lp_chart,
+    status_of,
+    value_label_position,
+)
 
 PNG = b"\x89PNG\r\n\x1a\n"
 
@@ -32,11 +39,27 @@ def _table(name="humans"):
 
 
 def test_status_bands():
+    # the chart's thresholds (currently 0.750 tentative, 0.900 reliable)
+    assert (TENTATIVE, RELIABLE) == (0.750, 0.900)
     assert status_of(float("nan")) == "n/a"
-    assert status_of(0.800) == "reliable"
-    assert status_of(0.667) == "tentative"
-    assert status_of(0.6669) == "below"
+    assert status_of(RELIABLE) == "reliable"
+    assert status_of(1.0) == "reliable"
+    assert status_of(RELIABLE - 0.0001) == "tentative"
+    assert status_of(TENTATIVE) == "tentative"
+    assert status_of(TENTATIVE - 0.0001) == "below"
     assert status_of(-0.2) == "below"
+
+
+def test_value_label_does_not_run_into_the_agree_column():
+    span = 1.25   # axis from -0.25 to 1.0
+    # near 1.0 (e.g. alpha = 1.00): above the dot, centred on it, so it stays left of "% agree"
+    x, y, ha, va = value_label_position(1.0, 3, span)
+    assert (x, ha, va) == (1.0, "center", "bottom") and y > 3
+    # normal: right of the dot; negative: left of it
+    assert value_label_position(0.5, 3, span)[1:] == (3, "left", "center")
+    assert value_label_position(0.5, 3, span)[0] > 0.5
+    assert value_label_position(-0.2, 3, span)[1:] == (3, "right", "center")
+    assert value_label_position(-0.2, 3, span)[0] < -0.2
 
 
 def test_constant_flag():
@@ -49,16 +72,21 @@ def test_constant_flag():
 
 
 def test_file_names():
-    csv = "results/lib_KA_chart_llm_20261008_1500.csv"
-    assert chart_path(csv).name == "lib_KA_chart_llm_20261008_1500.png"
-    assert table_path(csv, "humans").name == "lib_KA_labels_humans_20261008_1500.png"
+    # the CSV is named KA_result_<human|llm|all>_<time>.csv by ka_script_lib.py
+    csv = "results/KA_result_llm_20261008_1500.csv"
+    assert chart_path(csv).name == "KA_chart_llm_20261008_1500.png"
+    assert table_path(csv, "llms").name == "KA_labels_llms_20261008_1500.png"
+    assert (table_path(csv, "llm_glm_5.3_vs_llm_deepseek_v4.1").name
+            == "KA_labels_llm_glm_5_3_vs_llm_deepseek_v4_1_20261008_1500.png")
+    csv = "results/KA_result_all_20261008_1500.csv"   # no flag: all coders combined
+    assert chart_path(csv).name == "KA_chart_all_20261008_1500.png"
     assert (table_path(csv, "Combined (llm+human)").name
-            == "lib_KA_labels_combined_llm_human_20261008_1500.png")
+            == "KA_labels_combined_llm_human_20261008_1500.png")
     assert chart_path("my_run.csv").name == "my_run_chart.png"
 
 
 def test_one_chart_with_a_card_per_comparison(tmp_path):
-    names = ["humans", "a_vs_llm", "b_vs_llm", "Combined (llm+human)"]   # --llm: 2 x 2 grid
+    names = ["llms", "a_vs_b", "a_vs_c", "b_vs_c", "Combined (llm+human)"]   # 2 cards per row
     table = pd.concat([_table(n) for n in names], ignore_index=True)
     comparisons = [Comparison(n, ["a", "b"]) for n in names]
     path = save_lp_chart(table, _data(), comparisons, tmp_path / "lib_ka_result_llm_20261008_1500.csv")

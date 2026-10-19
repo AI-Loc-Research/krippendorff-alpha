@@ -1,9 +1,11 @@
 """Krippendorff's alpha computed with the `krippendorff` library (fast-krippendorff).
 
-Run from the project root (one flag is required):
-    uv run python ka_script_lib.py --human    # human coders (mentees) with each other
-    uv run python ka_script_lib.py --llm      # the same, plus each human vs each LLM,
-                                              # plus all coders combined (last rows)
+Run from the project root:
+    uv run python ka_script_lib.py --human    # only the human coders (mentees), with each other
+    uv run python ka_script_lib.py --llm      # only the LLM coders: all LLMs together plus every
+                                              # LLM pair, on the scenarios every LLM has judged
+    uv run python ka_script_lib.py            # no flag: all coders (humans + LLMs) combined,
+                                              # on the scenarios of units_from (config.toml)
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ from helper_visual_lp_chart import save_lp_chart
 PROJECT = Path(__file__).resolve().parent
 CONFIG = PROJECT / "config.toml"
 RESULTS = PROJECT / "results"
-THRESHOLD = 0.780
+THRESHOLD = 0.750
 TIMESTAMP = time.strftime("%Y%m%d_%H%M")
 
 
@@ -73,7 +75,7 @@ def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
 def verdict(alpha: float, n_units: int = 1) -> str:
     if np.isnan(alpha):  # not an error: every coder gave the same flag, so alpha = 0/0
         return "no variation" if n_units > 0 else "no data"
-    return "PASS" if alpha >= THRESHOLD else "below 0.780"
+    return "PASS" if alpha >= THRESHOLD else f"below {THRESHOLD:.3f}"
 
 
 def alpha_text(alpha: float) -> str:
@@ -99,7 +101,10 @@ def main() -> None:
     mode = parse_mode("ka_script_lib.py", "the krippendorff library")
     coders, units_from = load_config(CONFIG)
     comparisons = build_comparisons(coders, mode)
-    data = load_coding_data(coders_needed(coders, comparisons, units_from), units_from)
+    # --llm: the units are the scenarios every LLM has judged (no human sheet is loaded);
+    # --human and no flag: the scenarios of the units_from coder (the 25 sampled)
+    units = None if mode == "llm" else units_from
+    data = load_coding_data(coders_needed(coders, comparisons, units), units)
 
     print(data_check_report(data))
 

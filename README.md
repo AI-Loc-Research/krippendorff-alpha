@@ -35,10 +35,10 @@ $α = 1 − Dₒ / Dₑ$
 ```
 krippendorff-alpha/
 ├── config.toml              # coders: name, kind (human / llm), Excel file, sheet
-├── data_preprocessing.py    # shared: load, clean, match, encode, matrices, --human/--llm
+├── data_preprocessing.py    # shared: load, clean, match, encode, matrices, --human/--llm/no flag
 ├── ka_script_lib.py         # alpha via the krippendorff package
 ├── ka_script_custom.py      # alpha from scratch (Krippendorff 2011), checked against the library
-├── helper_visual_lp_chart.py           # lollipop chart (1 card for --human, 2 x 2 for --llm)
+├── helper_visual_lp_chart.py           # lollipop chart (one card per comparison, 2 per row)
 ├── helper_visual_comparison_table.py   # comparison tables: coders' raw labels side by side
 ├── tests/                   # published + hand-computed test cases
 ├── materials/               # coding sheets (not for public release)
@@ -51,18 +51,25 @@ krippendorff-alpha/
 uv sync
 uv run pytest -q                        # tests must pass
 
-# one flag is required; without it the script prints this usage guide
-uv run python ka_script_lib.py --human  # human coders (mentees) with each other
-uv run python ka_script_lib.py --llm    # the same, plus each human vs each LLM, plus all combined
+uv run python ka_script_lib.py --human  # only the human coders (mentees), with each other
+uv run python ka_script_lib.py --llm    # only the LLM coders: all LLMs together + every LLM pair
+uv run python ka_script_lib.py          # no flag: all coders (humans + LLMs) combined
+uv run python ka_script_lib.py -h       # usage guide
 
 uv run python ka_script_custom.py --human   # same flags; also checks every alpha against the library
 uv run python ka_script_custom.py --llm
 ```
 
-Who counts as human or LLM is set by `kind` in `config.toml`. `--human` never loads an LLM sheet.
-`--llm` ends with a **Combined (llm+human)** comparison: one alpha per component over all coders
-together (same CSV, last rows). It shows overall consistency but not *who* disagrees, so read it
-with the pairwise results. Its label grid is green only where every coder agrees.
+Who counts as human or LLM is set by `kind` in `config.toml`. Each mode loads only the sheets it needs:
+
+| Run         | Coders                                               | Scenarios (units)                                                                                     |
+| ----------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `--human` | humans only, together                                | the 25 of `units_from`                                                                              |
+| `--llm`   | LLMs only: all together, plus every LLM pair         | those **every** LLM has judged (all 7 flags), e.g. 193, or 70 while one LLM sheet is incomplete |
+| no flag     | everyone in one **Combined (llm+human)** alpha | the 25 of `units_from`; an LLM without a judgement there counts as missing                          |
+
+The combined alpha shows overall consistency but not *who* disagrees, so read it with the pairwise
+results. Its label grid is green only where every coder agrees.
 
 ## Reading the output
 
@@ -73,8 +80,8 @@ with the pairwise results. Its label grid is green only where every coder agrees
    In the CSV, such an α is an empty cell.
 3. **`results/<lib|custom>_ka_result_<human|llm>_<timestamp>.csv`**: the same table, with each coder's flag counts.
 4. **`results/<lib|custom>_ka_chart_<human|llm>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
-   with the 0.667 / 0.800 thresholds and % agreement beside each row. One card for `--human`; a 2 x 2 grid of
-   cards for `--llm` (humans, each mentee vs the LLM, combined), all on the same α scale.
+   with the threshold lines and % agreement beside each row. One card per comparison (2 per row),
+   all on the same α scale.
 5. **`results/<lib|custom>_ka_labels_<comparison>_<timestamp>.png`**: one per comparison. Each coder's raw labels
    (C / A / N) for the 25 scenarios x 7 components, side by side. Green = same flag from every coder;
    red with a bold, outlined letter = flags differ. The bottom row counts matching scenarios per component.

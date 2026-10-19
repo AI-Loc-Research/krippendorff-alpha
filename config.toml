@@ -1,9 +1,9 @@
 # Which coding sheets to compare. Paths are relative to this file.
 #
-#   uv run python ka_script_lib.py --human   compares all coders with kind = "human"
-#   uv run python ka_script_lib.py --llm     the same, plus each human vs each kind = "llm",
-#                                            plus all coders combined in one alpha
-#   (ka_script_custom.py takes the same flags)
+#   uv run python ka_script_lib.py --human   only the coders with kind = "human", together
+#   uv run python ka_script_lib.py --llm     only the coders with kind = "llm": all together plus
+#                                            every pair, on the scenarios every LLM has judged
+#   uv run python ka_script_lib.py           no flag: all coders combined in one alpha
 
 # The human coder whose scenarios define the units (the 25 sampled scenarios).
 # Must stay ABOVE the first [[coders]] block.
@@ -28,19 +28,20 @@ file = "materials/scenario_final_resolved_llm_kimi_2.5.xlsx"
 sheet = "Sheet1"
 
 [[coders]]
-name = "llm_kimi_3"
-kind = "llm"
-file = "materials/scenario_final_resolved_llm_kimi2_5.xlsx"
-sheet = "Judgements"
-
-[[coders]]
 name = "llm_deepseek_v4.1"
 kind = "llm"
-file = "materials/llm_kimi_k3_scenario_judgement.xlsx"
-sheet = "Judgements"
+file = "materials/llm_deepseek_v4.1_flash_scenario_judgement.xlsx"
+sheet = "judgements"
 
 [[coders]]
 name = "llm_glm_5.3"
 kind = "llm"
 file = "materials/llm_glm_5.3_scenario_judgement.xlsx"
-sheet = "Judgements"
+sheet = "judgements"
+
+
+# [[coders]]
+# name = "llm_kimi_3" # incomplete
+# kind = "llm"
+# file = "materials/llm_kimi_k3_scenario_judgement.xlsx"
+# sheet = "judgements"

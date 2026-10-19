@@ -1,10 +1,10 @@
 """Lollipop chart of Krippendorff's alpha (3 flags) per component, one panel per comparison.
 
 save_lp_chart(table, data, comparisons, csv_path) writes one PNG next to the CSV:
-    <prefix>_chart_<human|llm>_<time>.png
---human gives one panel; --llm gives a 2 x 2 grid (humans, each human vs the LLM, combined).
+    <prefix>_chart_<human|llm|all>_<time>.png
+One card per comparison: a single card for one comparison, otherwise 2 cards per row.
 
-Colour never carries the verdict alone: each dot's position against the labelled 0.780 / 0.900
+Colour never carries the verdict alone: each dot's position against the labelled 0.750 / 0.900
 lines shows it too (red vs green is unreadable for many colour-blind readers). Raw % agreement
 is a different measure, so it is listed as text beside each row, never as an alpha value.
 
@@ -31,14 +31,14 @@ from matplotlib.patches import FancyBboxPatch  # noqa: E402
 
 from data_preprocessing import constant_flag  # noqa: E402
 
-TENTATIVE, RELIABLE = 0.780, 0.900
+TENTATIVE, RELIABLE = 0.750, 0.900
 
 # Status colours (fixed meaning)
-GOOD, WARNING, CRITICAL = "#04a339", "#b6df02", "#c73636"
+GOOD, WARNING, CRITICAL = "#04a339", "#dfbe02", "#c73636"
 STATUS = {
     "reliable": (GOOD, "alpha >= 0.900  reliable"),
-    "tentative": (WARNING, "0.780 <= alpha < 0.900  tentative only"),
-    "below": (CRITICAL, "alpha < 0.780  do not rely on the data"),
+    "tentative": (WARNING, "0.750 <= alpha < 0.900  tentative only"),
+    "below": (CRITICAL, "alpha < 0.750  do not rely on the data"),
 }
 DOTTED = (0, (1, 2))
 INK, INK_2, MUTED = "#0b0b0b", "#4a4641", "#898781"
@@ -65,6 +65,23 @@ def status_of(alpha: float) -> str:
     if alpha >= RELIABLE:
         return "reliable"
     return "tentative" if alpha >= TENTATIVE else "below"
+
+
+# Above this alpha the value label no longer fits right of the dot: the axis ends at 1.0
+# and the "% agree" column starts just after it, so "1.00" would run into "100%".
+LABEL_ABOVE_FROM = 0.85
+
+
+def value_label_position(alpha: float, yi: float, span: float) -> tuple[float, float, str, str]:
+    """Where to write the alpha value next to its dot: (x, y, ha, va) in data coordinates.
+
+    Right of the dot normally, left of it for a negative alpha, and above the dot when
+    alpha is close to 1.0 (otherwise it overlaps the "% agree" column)."""
+    if alpha >= LABEL_ABOVE_FROM:
+        return alpha, yi + 0.2, "center", "bottom"
+    if alpha >= 0:
+        return alpha + 0.03 * span, yi, "left", "center"
+    return alpha - 0.03 * span, yi, "right", "center"
 
 
 def pretty(component: str) -> str:
@@ -125,7 +142,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
     ax.set_xlabel("Krippendorff's alpha", fontsize=11.5, color=INK_2)
 
     ax.axvline(0, color=BASELINE, linewidth=1, zorder=1)
-    for threshold, label in ((TENTATIVE, "0.780"), (RELIABLE, "0.900")):
+    for threshold, label in ((TENTATIVE, "0.750"), (RELIABLE, "0.900")):
         ax.axvline(threshold, color=INK_2, linewidth=1, linestyle=(0, (4, 3)), zorder=1)
         ax.text(threshold, 1.015, label, transform=ax.get_xaxis_transform(),
                 ha="center", va="bottom", fontsize=11.5, color=INK_2)
@@ -154,15 +171,15 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
             continue
         color = STATUS[status][0]
         ax.hlines(yi, 0, alpha, color=color, linewidth=2.4, zorder=2)
-        ax.scatter(alpha, yi, s=85, color=color, edgecolor=CARD, linewidth=2, zorder=3)
-        right = alpha >= 0
-        ax.text(alpha + (0.03 if right else -0.03) * span, yi, f"{alpha:.2f}",
-                va="center", ha="left" if right else "right", fontsize=12, color=INK,
+        # clip_on=False: at alpha = 1.0 the dot sits on the axis edge and would be cut in half
+        ax.scatter(alpha, yi, s=85, color=color, edgecolor=CARD, linewidth=2, zorder=3, clip_on=False)
+        x_text, y_text, ha, va = value_label_position(alpha, yi, span)
+        ax.text(x_text, y_text, f"{alpha:.2f}", va=va, ha=ha, fontsize=12, color=INK,
                 zorder=4, bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))
 
 
 def save_lp_chart(table: pd.DataFrame, data, comparisons, csv_path: Path) -> Path:
-    """One card per comparison: 1 card for --human, a 2 x 2 grid for --llm."""
+    """One card per comparison: 1 card alone, otherwise 2 cards per row."""
     names = list(dict.fromkeys(table["comparison"]))
     coders_of = {c.name: c.coders for c in comparisons}
     cols = 1 if len(names) == 1 else 2

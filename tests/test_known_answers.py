@@ -130,37 +130,79 @@ def test_config_errors(tmp_path):
             load_config(tmp_path / "config.toml")
 
 
-# --- Choosing what to run: --human / --llm ---------------------------------------------
+# --- Choosing what to run: --human / --llm / no flag ------------------------------------
 
 def _coders():
     from data_preprocessing import CoderSource
-    return [CoderSource("llm", "x", kind="llm"), CoderSource("adya", "y"), CoderSource("rujuta", "z")]
+    return [CoderSource("llm_a", "x", kind="llm"), CoderSource("adya", "y"),
+            CoderSource("llm_b", "w", kind="llm"), CoderSource("rujuta", "z"),
+            CoderSource("llm_c", "v", kind="llm")]
 
 
 def test_build_comparisons():
-    from data_preprocessing import build_comparisons
+    from data_preprocessing import CoderSource, build_comparisons
 
+    # --human: only the humans
     human = build_comparisons(_coders(), "human")
     assert [(c.name, c.coders) for c in human] == [("humans", ["adya", "rujuta"])]
+    # --llm: only the LLMs: all together, then every pair
     llm = build_comparisons(_coders(), "llm")
-    assert [(c.name, c.coders) for c in llm] == [("humans", ["adya", "rujuta"]),
-                                                  ("adya_vs_llm", ["adya", "llm"]),
-                                                  ("rujuta_vs_llm", ["rujuta", "llm"]),
-                                                  ("Combined (llm+human)", ["adya", "rujuta", "llm"])]
-    # 1 human + 1 LLM: the combined group would just repeat the pair, so it is left out
-    assert [c.name for c in build_comparisons(_coders()[:2], "llm")] == ["adya_vs_llm"]
+    assert [(c.name, c.coders) for c in llm] == [("llms", ["llm_a", "llm_b", "llm_c"]),
+                                                  ("llm_a_vs_llm_b", ["llm_a", "llm_b"]),
+                                                  ("llm_a_vs_llm_c", ["llm_a", "llm_c"]),
+                                                  ("llm_b_vs_llm_c", ["llm_b", "llm_c"])]
+    # 2 LLMs: the "all LLMs" group would just repeat their pair, so it is left out
+    two = [CoderSource("llm_a", "x", kind="llm"), CoderSource("llm_b", "w", kind="llm")]
+    assert [c.name for c in build_comparisons(two, "llm")] == ["llm_a_vs_llm_b"]
+    # no flag: everyone in one combined alpha
+    combined = build_comparisons(_coders(), "all")
+    assert [(c.name, c.coders) for c in combined] == [
+        ("Combined (llm+human)", ["adya", "rujuta", "llm_a", "llm_b", "llm_c"])]
+
     with pytest.raises(ValueError, match="--human needs at least 2"):
-        build_comparisons(_coders()[:2], "human")
+        build_comparisons(_coders()[:3], "human")
+    with pytest.raises(ValueError, match="--llm needs at least 2"):
+        build_comparisons(_coders()[:2], "llm")
+    with pytest.raises(ValueError, match="including the human coder"):
+        build_comparisons(two, "all")
 
 
-def test_human_mode_never_loads_the_llm_sheet():
+def test_mode_only_loads_its_own_kind():
     from data_preprocessing import build_comparisons, coders_needed
 
     needed = coders_needed(_coders(), build_comparisons(_coders(), "human"), "adya")
     assert [c.name for c in needed] == ["adya", "rujuta"]
+    # --llm passes units_from = None, so no human sheet is loaded at all
+    needed = coders_needed(_coders(), build_comparisons(_coders(), "llm"), None)
+    assert [c.name for c in needed] == ["llm_a", "llm_b", "llm_c"]
 
 
-@pytest.mark.parametrize("argv, expected", [(["--human"], "human"), (["--llm"], "llm")])
+def test_units_judged_by_every_coder(tmp_path):
+    """--llm: units = scenarios with all 7 flags in EVERY sheet (an LLM that stopped early
+    leaves empty rows; those scenarios drop out), in the first coder's order."""
+    from data_preprocessing import CoderSource, load_coding_data
+
+    _write_sheet(tmp_path / "a.xlsx", [("p1", "S1"), ("p1", "S2"), ("p2", "S1"), ("p2", "S2")])
+    _write_sheet(tmp_path / "b.xlsx", [("p2", "S2"), ("p1", "S1"), ("p2", "S1"), ("p1", "S2")])
+    partial = pd.read_excel(tmp_path / "a.xlsx")
+    flag_cols = [c for c in partial.columns if c.endswith("_uncertainty")]
+    partial.loc[[1, 3], flag_cols] = None          # p1/S2 and p2/S2 not judged (empty rows)
+    partial.to_excel(tmp_path / "c.xlsx", index=False)
+
+    coders = [CoderSource(n, tmp_path / f"{n}.xlsx", kind="llm") for n in ("a", "b", "c")]
+    data = load_coding_data(coders, None)
+    assert data.units == ["p1/S1", "p2/S1"]
+    assert data.units_from is None
+    assert data.extra_rows_ignored == {"a": 2, "b": 2, "c": 2}
+    assert not np.isnan(data.matrix("access", ["a", "b", "c"])).any()   # no missing cells left
+
+    _write_sheet(tmp_path / "x.xlsx", [("p9", "S1")])   # nothing judged in common -> clear error
+    with pytest.raises(ValueError, match="No scenario is judged"):
+        load_coding_data([coders[0], CoderSource("x", tmp_path / "x.xlsx", kind="llm")], None)
+
+
+@pytest.mark.parametrize("argv, expected",
+                         [(["--human"], "human"), (["--llm"], "llm"), ([], "all")])
 def test_parse_mode(monkeypatch, argv, expected):
     from data_preprocessing import parse_mode
 
@@ -168,7 +210,7 @@ def test_parse_mode(monkeypatch, argv, expected):
     assert parse_mode("ka_script_lib.py", "x") == expected
 
 
-@pytest.mark.parametrize("argv", [[], ["--human", "--llm"], ["--only", "humans"]])
+@pytest.mark.parametrize("argv", [["--human", "--llm"], ["--only", "humans"]])
 def test_parse_mode_rejects_bad_usage(monkeypatch, capsys, argv):
     from data_preprocessing import parse_mode
 

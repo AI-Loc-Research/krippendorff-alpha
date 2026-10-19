@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -186,7 +185,7 @@ def extract_flags(df: pd.DataFrame, coder: str) -> CoderFlags:
 # all coders, aligned
 @dataclass
 class CodingData:
-    units_from: str                     # coder whose scenarios define the units
+    units_from: str | None              # coder whose scenarios define the units; None = judged by all
     units: list[str]                    # unit keys, in that coder's order
     flags: dict[str, pd.DataFrame]      # coder -> flags for exactly `units`
     skipped_rows: dict[str, list[str]]
@@ -206,15 +205,29 @@ class CodingData:
         return out
 
 
-def load_coding_data(coders: list[CoderSource], units_from: str) -> CodingData:
-    """Steps 1-5 for all coders, then align everyone on the `units_from` coder's units."""
+def load_coding_data(coders: list[CoderSource], units_from: str | None) -> CodingData:
+    """Steps 1-5 for all coders, then align everyone on the same units.
+
+    units_from = a coder's name: that coder's scenarios are the units (e.g. the 25 sampled
+                 scenarios of a mentee); every other coder must contain them.
+    units_from = None: the units are the scenarios that EVERY loaded coder has judged
+                 (all 7 flags filled in), in the first coder's order. Used by --llm: all
+                 193 when every LLM sheet is complete, fewer when one LLM stopped early.
+    """
     extracted = []
     for src in coders:
         df = pd.read_excel(src.file, sheet_name=src.sheet, dtype=object)
         extracted.append(extract_flags(df, src.name))
 
     by_name = {cf.name: cf for cf in extracted}
-    units = list(by_name[units_from].flags.index)
+    if units_from is None:
+        judged = [set(cf.flags.index[cf.flags.notna().all(axis=1)]) for cf in extracted]
+        common = set.intersection(*judged)
+        units = [u for u in extracted[0].flags.index if u in common]
+        if not units:
+            raise ValueError(f"No scenario is judged (all 7 flags) by every coder: {list(by_name)}")
+    else:
+        units = list(by_name[units_from].flags.index)
     flags, extra = {}, {}
     for cf in extracted:
         missing = [u for u in units if u not in cf.flags.index]
@@ -271,7 +284,9 @@ def flag_counts(data: CodingData, coder: str, component: str) -> str:
 
 def data_check_report(data: CodingData) -> str:
     """Step 8: what was loaded, before any alpha is computed."""
-    lines = [f"\n• Units (Scenarios): {len(data.units)}"]
+    source = ("judged by every coder" if data.units_from is None
+              else f"the scenarios of {data.units_from}")
+    lines = [f"\n• Units (Scenarios): {len(data.units)}  ({source})"]
 
     for coder in data.flags:
         lines.append(f"\n[{coder}]")
@@ -284,49 +299,52 @@ def data_check_report(data: CodingData) -> str:
     return "\n".join(lines)
 
 
-# choose what to run: --human or --llm
+# choose what to run: --human, --llm, or no flag (all coders combined)
 
 def parse_mode(prog: str, engine: str) -> str:
-    """Read the one required flag (--human or --llm). With no flag, print the usage
-    guide and exit; argparse itself rejects both flags together or unknown flags."""
+    """Read the flag: --human -> "human", --llm -> "llm", no flag -> "all".
+    argparse itself rejects both flags together or unknown flags (and -h shows the help)."""
     parser = argparse.ArgumentParser(
         prog=prog,
         description=f"Krippendorff's alpha for the threat-model coding, computed with {engine}.",
-        epilog=f"examples:\n  uv run python {prog} --human\n  uv run python {prog} --llm\n\n"
+        epilog=f"examples:\n  uv run python {prog} --human\n  uv run python {prog} --llm\n"
+               f"  uv run python {prog}            (no flag: all coders combined)\n\n"
                "Coders and their kind (human / llm) are listed in config.toml.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    flags = parser.add_mutually_exclusive_group(required=True)
+    flags = parser.add_mutually_exclusive_group()
     flags.add_argument("--human", action="store_true",
-                       help="compare the human coders (mentees) with each other")
+                       help="only the human coders (mentees), with each other")
     flags.add_argument("--llm", action="store_true",
-                       help="as --human, plus each human vs each LLM, plus all coders combined")
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(2)
+                       help="only the LLM coders: all LLMs together plus every LLM pair, on the "
+                            "scenarios that every LLM has judged")
     args = parser.parse_args()
-    return "llm" if args.llm else "human"
+    return "llm" if args.llm else "human" if args.human else "all"
 
 
 COMBINED = "Combined (llm+human)"
 
 
 def build_comparisons(coders: list[CoderSource], mode: str) -> list[Comparison]:
-    """--human: all human coders together.
-    --llm: that, plus every human vs every LLM, plus (last) all coders together in one alpha."""
+    """--human ("human"): all human coders together.
+    --llm   ("llm"):   all LLM coders together, plus every pair of LLMs.
+    no flag ("all"):   every coder (humans + LLMs) together in one alpha."""
     humans = [c.name for c in coders if c.kind == "human"]
     llms = [c.name for c in coders if c.kind == "llm"]
-    comparisons = [Comparison("humans", humans)] if len(humans) >= 2 else []
     if mode == "human":
-        if not comparisons:
+        if len(humans) < 2:
             raise ValueError("--human needs at least 2 coders with kind = \"human\" in config.toml")
-        return comparisons
-    if not humans or not llms:
-        raise ValueError("--llm needs at least 1 human and 1 coder with kind = \"llm\" in config.toml")
-    comparisons += [Comparison(f"{h}_vs_{m}", [h, m]) for m in llms for h in humans]
-    if len(humans) + len(llms) >= 3:  # with 1 human + 1 LLM it would repeat the pair above
-        comparisons.append(Comparison(COMBINED, humans + llms))
-    return comparisons
+        return [Comparison("humans", humans)]
+    if mode == "llm":
+        if len(llms) < 2:
+            raise ValueError("--llm needs at least 2 coders with kind = \"llm\" in config.toml")
+        pairs = [Comparison(f"{a}_vs_{b}", [a, b]) for i, a in enumerate(llms) for b in llms[i + 1:]]
+        # with only 2 LLMs the "all LLMs" group would just repeat their pair
+        return ([Comparison("llms", llms)] if len(llms) >= 3 else []) + pairs
+    if not humans or len(humans) + len(llms) < 2:
+        raise ValueError("No flag (all coders combined) needs at least 2 coders, including the "
+                         "human coder named by units_from, in config.toml")
+    return [Comparison(COMBINED, humans + llms)]
 
 
 def coders_needed(
