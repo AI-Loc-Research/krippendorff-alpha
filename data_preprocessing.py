@@ -42,10 +42,6 @@ FLAG_ALIASES = {
     "not_specified": "Not specified",
 }
 
-# "3flag" keeps [Clear, Ambiguous, Not specified]
-# "binary" = the paper's definition: [Clear + Ambiguous, Not specified]
-VIEWS = ("3flag", "binary")
-
 SCENARIO_ID = re.compile(r"^S\d+$")
 
 # config
@@ -191,17 +187,14 @@ class CodingData:
     skipped_rows: dict[str, list[str]]
     extra_rows_ignored: dict[str, int]  # e.g. LLM sheet has 193 rows, we use 25
 
-    def matrix(self, component: str, coders: list[str], view: str = "3flag") -> np.ndarray:
+    def matrix(self, component: str, coders: list[str]) -> np.ndarray:
         """Reliability data matrix: rows = coders, columns = units, NaN = missing."""
-        if view not in VIEWS:
-            raise ValueError(f"view must be one of {VIEWS}")
         out = np.full((len(coders), len(self.units)), np.nan)
         for r, coder in enumerate(coders):
             for c, flag in enumerate(self.flags[coder][component]):
                 if pd.isna(flag):  # missing (pandas may store None as NaN)
                     continue
-                code = FLAG_CODES[flag]
-                out[r, c] = code if view == "3flag" else float(code > 0)
+                out[r, c] = FLAG_CODES[flag]
         return out
 
 
@@ -262,15 +255,13 @@ def pairable_units(matrix: np.ndarray) -> int:
 
 # why alpha can be "n/a" (not an error)
 
-def constant_flag(matrix: np.ndarray, view: str) -> str | None:
+def constant_flag(matrix: np.ndarray) -> str | None:
     """The one flag every coder gave in every comparable scenario, or None if flags vary."""
     pairable = (~np.isnan(matrix)).sum(axis=0) >= 2
     values = np.unique(matrix[:, pairable][~np.isnan(matrix[:, pairable])])
     if len(values) != 1:
         return None
-    if view == "3flag":
-        return {code: flag for flag, code in FLAG_CODES.items()}[int(values[0])]
-    return "specified" if values[0] == 1 else "not specified"
+    return {code: flag for flag, code in FLAG_CODES.items()}[int(values[0])]
 
 
 def flag_counts(data: CodingData, coder: str, component: str) -> str:

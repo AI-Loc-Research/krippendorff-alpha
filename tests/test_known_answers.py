@@ -27,7 +27,7 @@ EXAMPLE_C = [[1, 2, 3, 3, 2, 1, 4, 1, 2, nan, nan, nan],
 
 
 @pytest.mark.parametrize("data, expected", [
-    (EXAMPLE_A, 0.095),   # binary, 2 observers
+    (EXAMPLE_A, 0.095),   # two-category nominal data, 2 observers
     (EXAMPLE_B, 0.692),   # nominal, 2 observers
     (EXAMPLE_C, 0.743),   # nominal, 4 observers, missing data
 ])

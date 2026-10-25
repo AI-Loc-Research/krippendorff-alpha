@@ -27,21 +27,23 @@ kind = "llm"
 file = "materials/scenario_final_resolved_llm_kimi_2.5.xlsx"
 sheet = "Sheet1"
 
+[[coders]]
+name = "llm_deepseek_v4.1"
+kind = "llm"
+file = "materials/llm_deepseek_v4.1_flash_scenario_judgement.xlsx"
+sheet = "judgements"
+
+[[coders]]
+name = "llm_glm_5.3"
+kind = "llm"
+file = "materials/llm_glm_5.3_scenario_judgement.xlsx"
+sheet = "judgements"
+
+
+
+## Incomplete Judgment of an LLM (kimi k3)
 # [[coders]]
-# name = "llm_deepseek_v4.1"
-# kind = "llm"
-# file = "materials/llm_deepseek_v4.1_flash_scenario_judgement.xlsx"
-# sheet = "judgements"
-
-# # [[coders]]
-# # name = "llm_glm_5.3"
-# # kind = "llm"
-# # file = "materials/llm_glm_5.3_scenario_judgement.xlsx"
-# # sheet = "judgements"
-
-
-# [[coders]]
-# name = "llm_kimi_3" # incomplete
+# name = "llm_kimi_3" 
 # kind = "llm"
 # file = "materials/llm_kimi_k3_scenario_judgement.xlsx"
 # sheet = "judgements"

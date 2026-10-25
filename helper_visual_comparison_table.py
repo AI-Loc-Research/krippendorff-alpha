@@ -1,7 +1,7 @@
 """Comparison tables: each coder's raw flags (C / A / N) for every scenario x component,
 coders side by side, one PNG per comparison.
 
-save_comparison_tables(data, comparisons, csv_path) writes, next to the CSV:
+save_comparison_tables(data, comparisons, run_stem) writes one PNG per comparison:
     <prefix>_labels_<comparison>_<time>.png
 
 A cell is green when every coder gave the same flag and red when they differ.
@@ -66,31 +66,6 @@ LETTER = {
     "Not specified": "N",
 }
 
-
-# ---------------------------------------------------------------------
-# Layout
-# ---------------------------------------------------------------------
-#
-# CELL controls the overall size of the cells.
-#
-# LABEL_W controls the width available for scenario names.
-#
-# GRID_GAP controls the gap between coder tables.
-#
-# HEAD controls space above the table inside the white card.
-#
-# FOOT controls the space below the table for "25/25", etc.
-#
-# PAD controls the padding between the card edge and table.
-#
-# SIDE = left/right page margin
-#
-# TOP = space above white card
-#
-# BOTTOM = space below white card, including legend + abbreviation box
-#
-# ---------------------------------------------------------------------
-
 CELL = 0.34
 
 LABEL_W = 7.0
@@ -104,10 +79,6 @@ SIDE = 0.45
 TOP = 0.55
 BOTTOM = 1.55
 
-
-# ---------------------------------------------------------------------
-# Font
-# ---------------------------------------------------------------------
 
 _INSTALLED = {f.name for f in font_manager.fontManager.ttflist}
 
@@ -167,27 +138,27 @@ def file_safe(name: str) -> str:
 
 
 def table_path(
-    csv_path: Path,
+    run_stem: Path,
     comparison_name: str,
 ) -> Path:
-    """Create output PNG path."""
+    """Create comparison-table PNG path for a run stem."""
 
-    csv_path = Path(csv_path)
+    run_stem = Path(run_stem)
 
     m = re.match(
         r"^(.*)_result_(.*)_(\d{8}_\d{4})$",
-        csv_path.stem,
+        run_stem.name,
     )
 
     if m:
         prefix, _, stamp = m.groups()
 
-        return csv_path.parent / (
-            f"{prefix}_labels_{file_safe(comparison_name)}_{stamp}.png"
+        return run_stem.parent / (
+            f"judgement_comparison_{file_safe(comparison_name)}_{stamp}.png"
         )
 
-    return csv_path.parent / (
-        f"{csv_path.stem}_labels_{file_safe(comparison_name)}.png"
+    return run_stem.parent / (
+        f"judgement_comparison_{file_safe(comparison_name)}.png"
     )
 
 
@@ -671,7 +642,7 @@ def save_comparison_table(
 def save_comparison_tables(
     data,
     comparisons,
-    csv_path: Path,
+    run_stem: Path,
 ) -> list[Path]:
 
     return [
@@ -679,7 +650,7 @@ def save_comparison_tables(
             data,
             c,
             table_path(
-                csv_path,
+                run_stem,
                 c.name,
             ),
         )

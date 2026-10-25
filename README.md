@@ -35,7 +35,7 @@ krippendorff-alpha/
 ├── helper_visual_comparison_table.py   # comparison tables: coders' raw labels side by side
 ├── tests/                   # published + hand-computed test cases
 ├── materials/               # coding sheets (not for public release)
-└── results/                 # generated CSV + PNG files
+└── results/                 # generated PNG files
 ```
 
 ## Setup and run (uv)
@@ -55,14 +55,13 @@ Who counts as human or LLM is set by `kind` in `config.toml`. Each mode loads on
 ## Reading the output
 
 1. **DATA CHECK.** Flag counts per coder per component. Review these first: if they are wrong, every α after them is wrong.
-2. **α table.** Per component: number of scenarios, % agreement and α for both views, and the verdict against 0.667.
+2. **α table.** Per component: number of scenarios, % agreement and 3-category α, and the verdict against 0.667.
    `n/a` with verdict `no variation` is **not an error**: every coder gave the same flag to every scenario
    (e.g. all Clear), so D_o = D_e = 0 and α = 0/0. Agreement is 100%, but α has nothing to measure.
-   In the CSV, such an α is an empty cell.
-3. **`results/ka_result_<human|llm>_<timestamp>.csv`**: the same table, with each coder's flag counts.
-4. **`results/ka_chart_<human|llm>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
+3. **`results/k_alpha_chart_<human|llm|all>_<timestamp>.png`**: lollipop chart of the 3-category α per component,
    with the threshold lines and % agreement beside each row. One card per comparison (2 per row),
    all on the same α scale.
+4. **`results/k_alpha_labels_<comparison>_<timestamp>.png`**: raw coding comparison images, one per comparison.
 
 ## References
 
@@ -128,16 +127,12 @@ flowchart TD
     C --> D[3. SELECT SCENARIO ROWS<br/>keep rows with paper_id + S-number<br/>drop notes/tally rows]
     D --> E[4. MATCH UNITS<br/>align all coders on paper_id + scenario_id<br/>LLM file: 193 rows → your 25]
     E --> F[5. NORMALIZE VALUES<br/>'Clear ' / 'clear' → Clear<br/>'Not Specified' → Not specified<br/>empty → missing, unknown → STOP]
-    F --> G[6. ENCODE<br/>Not specified=0, Ambiguous=1, Clear=2<br/>binary view: 0→0, 1 or 2→1]
+    F --> G[6. ENCODE<br/>Not specified=0, Ambiguous=1, Clear=2]
     G --> H[7. BUILD RELIABILITY MATRICES<br/>per component: rows=coders, cols=25 scenarios]
     H --> I[8. DATA CHECK REPORT<br/>flag counts per coder, missing cells<br/>→ you eyeball BEFORE any α]
     I --> J1[9a. α via krippendorff library]
-    I --> J2[9b. α via custom from-scratch code]
-    J1 --> K[10. CROSS-CHECK<br/>library α == custom α ?]
-    J2 --> K
-    K --> L[11. REPORT<br/>per component: % agree, prevalence,<br/>α 3-flag, α binary, pass ≥ 0.667<br/>→ console + results/*.csv + PNGs]
+    J1 --> K[9. REPORT<br/>per component: % agree, α 3-category,<br/>pass ≥ 0.667<br/>→ console + PNGs]
     T[tests: 9 known-answer cases] -.must pass.-> J1
-    T -.must pass.-> J2
 ```
 
 ### Each step in plain words
@@ -147,11 +142,11 @@ flowchart TD
 3. **Select scenario rows.** Keep only rows with a `paper_id` and a scenario ID like `S4`. Your sheet has **4 notes rows at the bottom** (`total_ambiguous: 16`, `total_clear …`, and so on). They get skipped and listed in the data check.
 4. **Match units.** A "unit" is one scenario, identified by `paper_id` + `scenario_id`. Your 25 keys define the set. From the LLM file (193 rows) it takes just those 25. If any coder is missing a key, or has it twice, it **stops**. (I checked: all 25 of your keys exist in the library exactly once.)
 5. **Normalize values.** Fix the spelling variants. Your sheet has 8 different spellings:
-6. **Encode.** Turn words into numbers, because α works on numbers: Not specified = 0, Ambiguous = 1, Clear = 2. Also make a **binary copy** (0 → 0, 1 or 2 → 1), which matches the paper's "specified".
+6. **Encode.** Turn words into numbers, because α works on numbers: Not specified = 0, Ambiguous = 1, Clear = 2.
 7. **Build reliability matrices.** For each of the 7 components, one small table: one row per coder, one column per scenario, as in the guide's Step ①.
 
    ```
-   access (binary)   unit1 unit2 unit3 ... unit25
-   human                1     0     1   ...   1
-   llm                 0     0     1   ...  NaN   ← NaN = missing
+   access            unit1 unit2 unit3 ... unit25
+   human                2     0     1   ...   2
+   llm                  0     1     1   ...  NaN   ← NaN = missing
    ```

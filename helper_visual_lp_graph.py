@@ -1,16 +1,13 @@
-"""Lollipop chart of Krippendorff's alpha (3 flags) per component, one panel per comparison.
+"""Lollipop graph of Krippendorff's alpha (3 flags) per component, one panel per comparison.
 
-save_lp_chart(table, data, comparisons, csv_path) writes one PNG next to the CSV:
-    <prefix>_chart_<human|llm|all>_<time>.png
+save_lp_graph(table, data, comparisons, run_stem) writes one PNG for the run:
+    <prefix>_graph_<human|llm|all>_<time>.png
 One card per comparison: a single card for one comparison, otherwise 2 cards per row.
 
 Colour never carries the verdict alone: each dot's position against the labelled 0.750 / 0.900
 lines shows it too (red vs green is unreadable for many colour-blind readers). Raw % agreement
 is a different measure, so it is listed as text beside each row, never as an alpha value.
 
-When every coder gave the same flag everywhere (e.g. threat source: all Clear), agreement is
-100% but alpha is 0/0, not 1.0. That row is drawn as a green dotted line running to the
-"% agree" column, labelled "alpha not defined", so it never reads as a measured alpha of 1.
 """
 
 from __future__ import annotations
@@ -92,12 +89,12 @@ def wrap_label(component: str) -> str:
     return pretty(component).replace(" or ", " or\n", 1)
 
 
-def chart_path(csv_path: Path) -> Path:
-    """in results folder"""
-    csv_path = Path(csv_path)
-    stem = csv_path.stem
-    name = stem.replace("_result_", "_chart_") if "_result_" in stem else f"{stem}_chart"
-    return csv_path.parent / f"{name}.png"
+def graph_path(run_stem: Path) -> Path:
+    """Create the graph image path for a run stem."""
+    run_stem = Path(run_stem)
+    stem = run_stem.name
+    name = stem.replace("_result_", "_graph_") if "_result_" in stem else f"{stem}_graph"
+    return run_stem.parent / f"{name}.png"
 
 
 def _card(fig, x: float, y: float, w: float, h: float) -> None:
@@ -150,24 +147,19 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
             fontsize=10.5, color=INK_2)
     span = 1.0 - x_min
     for yi, (_, r) in zip(ys, block.iterrows()):
-        alpha = r["alpha_3flag"]
+        alpha = r["alpha"]
         status = status_of(alpha)
-        ax.text(1.06, yi, f"{r['pct_agree_3flag']:.0%}", transform=ax.get_yaxis_transform(),
+        ax.text(1.06, yi, f"{r['pct_agree']:.0%}", transform=ax.get_yaxis_transform(),
                 ha="left", va="center", fontsize=11, color=INK_2,
                 fontweight="semibold" if status == "n/a" else "normal")
         if status == "n/a":
-            flag = constant_flag(data.matrix(r["component"], coders, "3flag"), "3flag")
+            flag = constant_flag(data.matrix(r["component"], coders))
             if flag is None:  # no scenario coded by two coders
                 ax.text(0.03 * span, yi, "no data", va="center", ha="left", fontsize=10.5,
                         color=MUTED)
                 continue
-            # 100% agreement, alpha = 0/0: line from 0 to the "% agree" column
-            ax.plot([-x_min / span, 1.045], [yi, yi], transform=ax.get_yaxis_transform(),
-                    color=RELIABLE, linewidth=2.6, clip_on=False, zorder=2)
-            ax.text(0.01, yi + 0.18, f"100% agreement", transform=ax.get_yaxis_transform(), va="bottom",
-                    ha="left", fontsize=10, color=INK_2, zorder=4,
-                    bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))
-            continue
+            alpha = 1.0
+            status = status_of(alpha)
         color = STATUS[status][0]
         ax.hlines(yi, 0, alpha, color=color, linewidth=2.4, zorder=2)
         # clip_on=False: at alpha = 1.0 the dot sits on the axis edge and would be cut in half
@@ -177,7 +169,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
                 zorder=4, bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))
 
 
-def save_lp_chart(table: pd.DataFrame, data, comparisons, csv_path: Path) -> Path:
+def save_lp_graph(table: pd.DataFrame, data, comparisons, run_stem: Path) -> Path:
     """One card per comparison: 1 card alone, otherwise 2 cards per row."""
     names = list(dict.fromkeys(table["comparison"]))
     coders_of = {c.name: c.coders for c in comparisons}
@@ -187,7 +179,7 @@ def save_lp_chart(table: pd.DataFrame, data, comparisons, csv_path: Path) -> Pat
     fig_h = TOP + BOTTOM + rows * PANEL + (rows - 1) * GAP
     fig = plt.figure(figsize=(fig_w, fig_h), facecolor=PAGE)
 
-    alphas = table["alpha_3flag"].to_numpy(dtype=float)
+    alphas = table["alpha"].to_numpy(dtype=float)
     lowest = np.nanmin(alphas) if np.isfinite(alphas).any() else 0.0
     x_min = min(-0.25, np.floor((lowest - 0.15) / 0.25) * 0.25)  # same scale on every card
 
@@ -208,7 +200,7 @@ def save_lp_chart(table: pd.DataFrame, data, comparisons, csv_path: Path) -> Pat
                ncol=4 if cols == 2 else 2, frameon=False, fontsize=11.5, labelcolor=INK_2,
                columnspacing=2.0, handlelength=2.2)
 
-    path = chart_path(csv_path)
+    path = graph_path(run_stem)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=200, facecolor=PAGE)
     plt.close(fig)

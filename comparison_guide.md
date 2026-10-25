@@ -136,20 +136,15 @@ The values to remember:
 - D_e = 2 · (7·1 + 7·12 + 1·12) / (20 · 19) = 206 / 380 = **0.542**
 - **α = 1 − 0.200 / 0.542 = 0.631**, against **80% raw agreement**
 
-If you merge the flags into Present / Missing first (Clear + Ambiguous = Present), the same data gives **α = 0.604**.
-
 ## Levels of measurement (the δ² difference function)
 - **Nominal:** categories with no order. δ² = 0 if c = k, otherwise 1.
 - **Ordinal:** ranked categories. δ²_ck = (Σ_{g=c}^{k} n_g − (n_c + n_k)/2)². Disagreeing between neighbouring categories costs less.
 - **Interval:** δ² = (c − k)²
 - **Ratio:** δ² = ((c − k) / (c + k))²
 
-**For your data**, there are three defensible choices:
+**For your data**, there are two defensible choices:
 - **Nominal on 3 categories:** the default.
 - **Ordinal** with the order Not specified < Ambiguous < Clear: a Clear-vs-Ambiguous disagreement costs less than Clear-vs-Not-specified.
-- **Nominal on the binary split** (Present / Missing): this matches how the paper counts "specified".
-
-**Decide which one is primary before you look at results**, and report the others as sensitivity checks.
 
 ## How alpha relates to other measures
 - **Percent agreement:** not corrected for chance, so it overstates reliability. Report it, but never alone (Lombard et al. 2002).

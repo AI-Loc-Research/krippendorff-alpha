@@ -19,7 +19,6 @@ import pandas as pd
 
 from data_preprocessing import (
     COMPONENTS,
-    VIEWS,
     build_comparisons,
     coders_needed,
     data_check_report,
@@ -31,7 +30,7 @@ from data_preprocessing import (
     percent_agreement,
 )
 from helper_visual_comparison_table import save_comparison_tables
-from helper_visual_lp_graph import save_lp_chart
+from helper_visual_lp_graph import save_lp_graph
 
 PROJECT = Path(__file__).resolve().parent
 CONFIG = PROJECT / "config.toml"
@@ -56,16 +55,14 @@ def alpha_nominal(matrix: np.ndarray) -> float:
 def alpha_table(data, comparison_name: str, coders: list[str]) -> pd.DataFrame:
     rows = []
     for comp in COMPONENTS:
-        # Missing cells are the same in both views, so one n_units covers both.
+        matrix = data.matrix(comp, coders)
         row = {
             "comparison": comparison_name,
             "component": comp,
-            "n_units": pairable_units(data.matrix(comp, coders, "3flag")),
+            "n_units": pairable_units(matrix),
+            "pct_agree": percent_agreement(matrix),
+            "alpha": alpha_nominal(matrix),
         }
-        for view in VIEWS:
-            m = data.matrix(comp, coders, view)
-            row[f"pct_agree_{view}"] = percent_agreement(m)
-            row[f"alpha_{view}"] = alpha_nominal(m)
         for coder in coders:
             row[f"flags_{coder}"] = flag_counts(data, coder, comp)
         rows.append(row)
@@ -86,15 +83,11 @@ def print_table(df: pd.DataFrame, comparisons) -> None:
     coders_of = {c.name: c.coders for c in comparisons}
     for name, block in df.groupby("comparison", sort=False):
         print(f"\n• {name} judgement; between: {' vs '.join(coders_of[name])} (THRESHOLD: {THRESHOLD})\n")
-        print(f"{'component':36} | {'%agree':>6} {'alpha':>7} {'':12} | "
-              f"{'%agree':>6} {'alpha':>7} {'':12}")
-        print(f"{'':36} |{'----- 3 flags -----':^27} | {'----- binary -----':^27}")
+        print(f"{'component':36} | {'%agree':>6} {'alpha':>7} {'':12}")
         for _, r in block.iterrows():
             print(f"{r.component:36} | "
-                  f"{r.pct_agree_3flag:>6.1%} {alpha_text(r.alpha_3flag):>7} "
-                  f"{verdict(r.alpha_3flag, r.n_units):12} | "
-                  f"{r.pct_agree_binary:>6.1%} {alpha_text(r.alpha_binary):>7} "
-                  f"{verdict(r.alpha_binary, r.n_units):12}")
+                  f"{r.pct_agree:>6.1%} {alpha_text(r.alpha):>7} "
+                  f"{verdict(r.alpha, r.n_units):12}")
 
 
 def main() -> None:
@@ -113,12 +106,9 @@ def main() -> None:
     )
     print_table(table, comparisons)
 
-    out = RESULTS / f"k_alpha_result_{mode}_{TIMESTAMP}.csv"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    table.round(4).to_csv(out, index=False)  # 4 decimals in the file; charts use full precision
-    print(f"\nSaved: {out.relative_to(PROJECT)}")
-    saved = [save_lp_chart(table, data, comparisons, out),
-             *save_comparison_tables(data, comparisons, out)]
+    run_stem = RESULTS / f"k_alpha_result_{mode}_{TIMESTAMP}"
+    saved = [save_lp_graph(table, data, comparisons, run_stem),
+             *save_comparison_tables(data, comparisons, run_stem)]
     for path in saved:
         print(f"Saved: {path.relative_to(PROJECT)}")
 
