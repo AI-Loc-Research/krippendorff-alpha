@@ -1,16 +1,16 @@
-clean up the naming, threshold/status logic, and printed report.
+## Krippendorff's Alpha: Reliability of Threat-Model Component Coding
 
-# Krippendorff's Alpha: Reliability of Threat-Model Component Coding
-
-Human coders independently flag a random sample of 25 scenarios (one per paper, 25 papers) using the same codebook as the LLM. The scripts here measure agreement between `coders`, `human (mentee) vs human (mentee)` and `human vs LLM`, with **Krippendorff's alpha (α)**, the standard chance-corrected reliability coefficient in content analysis.
+Human coders  or llms independently flag a random sample of scenarios using the same codebook. The scripts here measure agreement between **CODERS**:, `human (mentee) vs human (mentee)`,`human vs LLM`, `LLM vs LLM`with **Krippendorff's alpha (α)**, the standard chance-corrected reliability coefficient in content analysis.
 
 The seven components: _threat source, objective or harmful outcome, capability, knowledge, access, constraints or enabling conditions, target or asset at risk._
 
 ## What Krippendorff's alpha measures
 
-Two coders can agree simply by chance, especially when one flag dominates. Alpha removes that chance agreement:
+Two individuals can agree simply by chance, especially when one flag dominates. Alpha removes that chance agreement:
 
-$α = 1 − Dₒ / Dₑ$
+$$
+\alpha = 1 - \frac{D_o}{D_e}
+$$
 
 - **Dₒ (observed disagreement):** how often coders actually gave different flags to the same scenario.
 - **Dₑ (expected disagreement):** how often two flags drawn at random from *all* flags given (pooled across coders, without replacement) would differ.
@@ -24,21 +24,14 @@ $α = 1 − Dₒ / Dₑ$
 | 0.667 – 0.800 | acceptable for tentative conclusions only   |
 | < 0.667        | do not rely on the data                     |
 
-## Why two implementations
-
-1. **`ka_script_lib.py`** uses the [`krippendorff`](https://github.com/pln-fing-udelar/fast-krippendorff) Python package (v0.9.0).
-2. **`ka_script_custom.py`** is our from-scratch implementation of the four steps in
-   Krippendorff (2011): reliability data matrix → coincidence matrix → difference function → α. _[for cross check]_
-
-## Project layout
+**Project layout:**
 
 ```
 krippendorff-alpha/
 ├── config.toml              # coders: name, kind (human / llm), Excel file, sheet
 ├── data_preprocessing.py    # shared: load, clean, match, encode, matrices, --human/--llm/no flag
-├── ka_script_lib.py         # alpha via the krippendorff package
-├── ka_script_custom.py      # alpha from scratch (Krippendorff 2011), checked against the library
-├── helper_visual_lp_chart.py           # lollipop chart (one card per comparison, 2 per row)
+├── k_alpha_script.py         # alpha via the krippendorff package
+├── helper_visual_lp_graph.py           # lollipop chart (one card per comparison, 2 per row)
 ├── helper_visual_comparison_table.py   # comparison tables: coders' raw labels side by side
 ├── tests/                   # published + hand-computed test cases
 ├── materials/               # coding sheets (not for public release)
@@ -50,26 +43,14 @@ krippendorff-alpha/
 ```Shell
 uv sync
 uv run pytest -q                        # tests must pass
+uv run python k_alpha_script.py -h       # usage guide
 
-uv run python ka_script_lib.py --human  # only the human coders (mentees), with each other
-uv run python ka_script_lib.py --llm    # only the LLM coders: all LLMs together + every LLM pair
-uv run python ka_script_lib.py          # no flag: all coders (humans + LLMs) combined
-uv run python ka_script_lib.py -h       # usage guide
-
-uv run python ka_script_custom.py --human   # same flags; also checks every alpha against the library
-uv run python ka_script_custom.py --llm
+uv run python k_alpha_script.py --human  # only the human coders (mentees), with each other
+uv run python k_alpha_script.py --llm    # only the LLM coders: all LLMs together + every LLM pair
+uv run python k_alpha_script.py          # no flag: all coders (humans + LLMs) combined
 ```
 
 Who counts as human or LLM is set by `kind` in `config.toml`. Each mode loads only the sheets it needs:
-
-| Run         | Coders                                               | Scenarios (units)                                                                                     |
-| ----------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--human` | humans only, together                                | the 25 of `units_from`                                                                              |
-| `--llm`   | LLMs only: all together, plus every LLM pair         | those **every** LLM has judged (all 7 flags), e.g. 193, or 70 while one LLM sheet is incomplete |
-| no flag     | everyone in one **Combined (llm+human)** alpha | the 25 of `units_from`; an LLM without a judgement there counts as missing                          |
-
-The combined alpha shows overall consistency but not *who* disagrees, so read it with the pairwise
-results. Its label grid is green only where every coder agrees.
 
 ## Reading the output
 
@@ -78,32 +59,10 @@ results. Its label grid is green only where every coder agrees.
    `n/a` with verdict `no variation` is **not an error**: every coder gave the same flag to every scenario
    (e.g. all Clear), so D_o = D_e = 0 and α = 0/0. Agreement is 100%, but α has nothing to measure.
    In the CSV, such an α is an empty cell.
-3. **`results/<lib|custom>_ka_result_<human|llm>_<timestamp>.csv`**: the same table, with each coder's flag counts.
-4. **`results/<lib|custom>_ka_chart_<human|llm>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
+3. **`results/ka_result_<human|llm>_<timestamp>.csv`**: the same table, with each coder's flag counts.
+4. **`results/ka_chart_<human|llm>_<timestamp>.png`**: lollipop chart of the 3-flag α per component,
    with the threshold lines and % agreement beside each row. One card per comparison (2 per row),
    all on the same α scale.
-5. **`results/<lib|custom>_ka_labels_<comparison>_<timestamp>.png`**: one per comparison. Each coder's raw labels
-   (C / A / N) for the 25 scenarios x 7 components, side by side. Green = same flag from every coder;
-   red with a bold, outlined letter = flags differ. The bottom row counts matching scenarios per component.
-
-| Column                  | In simple words                                                                                                                                                                                                                                                                | Example (constraints row)              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| `comparison`          | Which coders are being compared                                                                                                                                                                                                                                                | `humans`                             |
-| `component`           | Which of the 7 components                                                                                                                                                                                                                                                      | `constraints_or_enabling_conditions` |
-| `n_units`             | `How many scenarios both coders flagged (comparable). Lower than 25 only if someone left a cell empty`                                                                                                                                                                       | `25`                                 |
-| `pct_agree_3flag`     | Share of scenarios where you gave**exactly the same flag** (Clear = Clear, Ambiguous = Ambiguous, Not specified = Not specified). **Doesn't account for luck**                                                                                                     | `0.72` → you matched on 18 of 25    |
-| `alpha_3flag`         | Krippendorff's α on the 3 flags: agreement**after removing luck** . 1 = perfect, 0 = no better than chance, below 0 = systematic disagreement. Pass mark 0.667.<br />`It's a **reliability value** (agreement after removing chance), **not** a disagreement value:)` | `0.249`                              |
-|                         |                                                                                                                                                                                                                                                                                |                                        |
-| `pct_agree_binary`    | Share of scenarios where you agreed on**present vs absent** only. Clear and Ambiguous both count as "present", so Clear vs Ambiguous counts as **agreement** here                                                                                                  | `0.88` → you matched on 22 of 25    |
-| `alpha_binary`        | α on present vs absent, the paper's own definition of "specified"                                                                                                                                                                                                             | `0.512`                              |
-| `flags_mentee_adya`   | How many times you used each flag for this component:**C**lear, **A**mbiguous, **N**ot specified. Adds `missing=…` if you left cells empty                                                                                                                | `C=17 A=4 N=4`                       |
-| `flags_mentee_rujuta` | The same counts for Rujuta                                                                                                                                                                                                                                                     | `C=22 A=0 N=3`                       |
-
-- [X] Shared data pipeline and library implementation
-- [X] From-scratch implementation + cross-check
-- [ ] Bootstrap confidence intervals
-- [X] Second human coder; human-vs-human α
-- [ ] Consensus labels; LLM precision/recall vs consensus
 
 ## References
 
@@ -122,7 +81,7 @@ results. Its label grid is green only where every coder agrees.
                       │
           ┌───────────┴───────────┐
           ↓                       ↓
-     Human coder 1           Human coder 2
+       coder 1                 coder 2
           │                       │
           └───────────┬───────────┘
                       ↓
@@ -146,7 +105,7 @@ Then:
               LLM
                │
                ↓
-       Same 25 scenarios
+       Same scenarios
                │
                ↓
        Same 7 components
@@ -157,7 +116,7 @@ Then:
                ↓
        Compare against
        human consensus
-       gold standard
+       assumed gold standard
 ```
 
 ## FULL PIPELINE (STEPS)
@@ -188,28 +147,11 @@ flowchart TD
 3. **Select scenario rows.** Keep only rows with a `paper_id` and a scenario ID like `S4`. Your sheet has **4 notes rows at the bottom** (`total_ambiguous: 16`, `total_clear …`, and so on). They get skipped and listed in the data check.
 4. **Match units.** A "unit" is one scenario, identified by `paper_id` + `scenario_id`. Your 25 keys define the set. From the LLM file (193 rows) it takes just those 25. If any coder is missing a key, or has it twice, it **stops**. (I checked: all 25 of your keys exist in the library exactly once.)
 5. **Normalize values.** Fix the spelling variants. Your sheet has 8 different spellings:
-
-   | In your sheet                                          | Becomes                                         |
-   | ------------------------------------------------------ | ----------------------------------------------- |
-   | `'Clear'`, `'Clear '`, `'clear'`                 | Clear                                           |
-   | `'Ambiguous'`, `'\nAmbiguous'`, `'Ambiguous \n'` | Ambiguous                                       |
-   | `'Not Specified'`, `'Not specified'`               | Not specified                                   |
-   | empty                                                  | missing                                         |
-   | anything else, e.g.`'Maybe'`                         | **STOP** with coder, row and column named |
-
-   The LLM file is already clean: only `Clear`, `Ambiguous`, `Not specified`.
 6. **Encode.** Turn words into numbers, because α works on numbers: Not specified = 0, Ambiguous = 1, Clear = 2. Also make a **binary copy** (0 → 0, 1 or 2 → 1), which matches the paper's "specified".
 7. **Build reliability matrices.** For each of the 7 components, one small table: one row per coder, one column per scenario, as in the guide's Step ①.
 
    ```
    access (binary)   unit1 unit2 unit3 ... unit25
-   adya                1     0     1   ...   1
+   human                1     0     1   ...   1
    llm                 0     0     1   ...  NaN   ← NaN = missing
    ```
-8. **Data check (before any α).** Print and save: how many of each flag each coder used, which cells are missing, and which rows were skipped. **You look at this first.** If something's wrong here, every α after it is wrong.
-9. **Compute.** The same matrices go to both engines:
-
-   - **9a, library:** `krippendorff.alpha(…, level_of_measurement="nominal")`. The level is always set explicitly, never left at the default.
-   - **9b, custom:** coincidence matrix → D_o → D_e → α, written by us from the 2011 guide.
-   - Both also get: % agreement, prevalence, and "undefined" handling when everyone gives the same flag.
-10. **Cross-check.** If library α and custom α differ by more than a tiny amount (e.g. 0.000001), the script flags it.

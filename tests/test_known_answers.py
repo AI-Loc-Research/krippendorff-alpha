@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from data_preprocessing import extract_flags, normalize_flag, percent_agreement
-from ka_script_lib import alpha_nominal
+from k_alpha_script import alpha_nominal
 
 nan = np.nan
 

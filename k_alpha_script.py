@@ -31,7 +31,7 @@ from data_preprocessing import (
     percent_agreement,
 )
 from helper_visual_comparison_table import save_comparison_tables
-from helper_visual_lp_chart import save_lp_chart
+from helper_visual_lp_graph import save_lp_chart
 
 PROJECT = Path(__file__).resolve().parent
 CONFIG = PROJECT / "config.toml"
@@ -113,7 +113,7 @@ def main() -> None:
     )
     print_table(table, comparisons)
 
-    out = RESULTS / f"KA_result_{mode}_{TIMESTAMP}.csv"
+    out = RESULTS / f"k_alpha_result_{mode}_{TIMESTAMP}.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     table.round(4).to_csv(out, index=False)  # 4 decimals in the file; charts use full precision
     print(f"\nSaved: {out.relative_to(PROJECT)}")

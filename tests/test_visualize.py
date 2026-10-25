@@ -4,7 +4,7 @@ import pandas as pd
 
 from data_preprocessing import COMPONENTS, CodingData, Comparison, constant_flag
 from helper_visual_comparison_table import save_comparison_tables, table_path
-from helper_visual_lp_chart import (
+from helper_visual_lp_graph import (
     RELIABLE,
     TENTATIVE,
     chart_path,

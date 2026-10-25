@@ -31,14 +31,14 @@ from matplotlib.patches import FancyBboxPatch  # noqa: E402
 
 from data_preprocessing import constant_flag  # noqa: E402
 
-TENTATIVE, RELIABLE = 0.750, 0.900
+ACCEPTABLE_THRESHOLD, RELIABLE_THRESHOLD = 0.750, 0.900
 
 # Status colours (fixed meaning)
-GOOD, WARNING, CRITICAL = "#04a339", "#dfbe02", "#c73636"
+RELIABLE, ACCEPTABLE, CRITICAL = "#178332", "#7E8609", "#c73636"
 STATUS = {
-    "reliable": (GOOD, "alpha >= 0.900  reliable"),
-    "tentative": (WARNING, "0.750 <= alpha < 0.900  tentative only"),
-    "below": (CRITICAL, "alpha < 0.750  do not rely on the data"),
+    "reliable": (RELIABLE, "alpha >= 0.900  RELIABLE"),
+    "tentative": (ACCEPTABLE, "0.750 <= alpha < 0.900  ACCEPTABLE"),
+    "below": (CRITICAL, "alpha < 0.750  BAD"),
 }
 DOTTED = (0, (1, 2))
 INK, INK_2, MUTED = "#0b0b0b", "#4a4641", "#898781"
@@ -62,15 +62,14 @@ plt.rcParams.update({"font.family": FONT, "font.size": 13, "axes.edgecolor": BAS
 def status_of(alpha: float) -> str:
     if alpha is None or np.isnan(alpha):
         return "n/a"
-    if alpha >= RELIABLE:
+    if alpha >= RELIABLE_THRESHOLD:
         return "reliable"
-    return "tentative" if alpha >= TENTATIVE else "below"
+    return "tentative" if alpha >= ACCEPTABLE_THRESHOLD else "below"
 
 
 # Above this alpha the value label no longer fits right of the dot: the axis ends at 1.0
 # and the "% agree" column starts just after it, so "1.00" would run into "100%".
 LABEL_ABOVE_FROM = 0.85
-
 
 def value_label_position(alpha: float, yi: float, span: float) -> tuple[float, float, str, str]:
     """Where to write the alpha value next to its dot: (x, y, ha, va) in data coordinates.
@@ -142,7 +141,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
     ax.set_xlabel("Krippendorff's alpha", fontsize=11.5, color=INK_2)
 
     ax.axvline(0, color=BASELINE, linewidth=1, zorder=1)
-    for threshold, label in ((TENTATIVE, "0.750"), (RELIABLE, "0.900")):
+    for threshold, label in ((ACCEPTABLE_THRESHOLD, "0.750"), (RELIABLE_THRESHOLD, "0.900")):
         ax.axvline(threshold, color=INK_2, linewidth=1, linestyle=(0, (4, 3)), zorder=1)
         ax.text(threshold, 1.015, label, transform=ax.get_xaxis_transform(),
                 ha="center", va="bottom", fontsize=11.5, color=INK_2)
@@ -164,7 +163,7 @@ def _panel(fig, x: float, y: float, block: pd.DataFrame, data, name: str,
                 continue
             # 100% agreement, alpha = 0/0: line from 0 to the "% agree" column
             ax.plot([-x_min / span, 1.045], [yi, yi], transform=ax.get_yaxis_transform(),
-                    color=GOOD, linewidth=2.6, clip_on=False, zorder=2)
+                    color=RELIABLE, linewidth=2.6, clip_on=False, zorder=2)
             ax.text(0.01, yi + 0.18, f"100% agreement", transform=ax.get_yaxis_transform(), va="bottom",
                     ha="left", fontsize=10, color=INK_2, zorder=4,
                     bbox=dict(facecolor=CARD, edgecolor="none", pad=1.5))

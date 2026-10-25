@@ -12,13 +12,13 @@ units_from = "mentee_adya"
 [[coders]]
 name = "mentee_adya"
 kind = "human"
-file = "materials/25_random_scenario_judgement_adya.xlsx"
+file = "materials/25_random_scenario_judgement_adya_updated.xlsx"
 sheet = "Judgment1"
 
 [[coders]]
 name = "mentee_rujuta"
 kind = "human"
-file = "materials/25_random_scenario_judgement_rujuta.xlsx"
+file = "materials/25_random_scenario_judgement_rujuta_updated.xlsx"
 sheet = "Judgment1"
 
 [[coders]]
@@ -27,17 +27,17 @@ kind = "llm"
 file = "materials/scenario_final_resolved_llm_kimi_2.5.xlsx"
 sheet = "Sheet1"
 
-[[coders]]
-name = "llm_deepseek_v4.1"
-kind = "llm"
-file = "materials/llm_deepseek_v4.1_flash_scenario_judgement.xlsx"
-sheet = "judgements"
+# [[coders]]
+# name = "llm_deepseek_v4.1"
+# kind = "llm"
+# file = "materials/llm_deepseek_v4.1_flash_scenario_judgement.xlsx"
+# sheet = "judgements"
 
-[[coders]]
-name = "llm_glm_5.3"
-kind = "llm"
-file = "materials/llm_glm_5.3_scenario_judgement.xlsx"
-sheet = "judgements"
+# # [[coders]]
+# # name = "llm_glm_5.3"
+# # kind = "llm"
+# # file = "materials/llm_glm_5.3_scenario_judgement.xlsx"
+# # sheet = "judgements"
 
 
 # [[coders]]
